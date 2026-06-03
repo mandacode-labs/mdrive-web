@@ -9,7 +9,7 @@
     "lint": "biome lint .",
     "format": "biome check . --write",
     "check": "biome check .",
-    "api:gen": "orval"
+    "api:gen": "npx orval --config orval.config.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.95.0",
