@@ -10,33 +10,27 @@ import WindowHeader from "./window_header";
 
 export default memo(function Window({ windowKey }: { windowKey: string }) {
   // Constants
-  const minWindowSize = useMemo(() => ({ width: 250, height: 180 }), []); // Minimum window size
+  const minWindowSize = useMemo(() => ({ width: 250, height: 180 }), []);
 
   // States
   const [maximized, setMaximized] = useState(false);
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
-  const [prevWindowSize, setPrevWindowSize] = useState({ width: 0, height: 0 });
-  const [windowPosition, setWindowPosition] = useState({ x: 0, y: 0 });
-  const [prevWindowPosition, setPrevWindowPosition] = useState({ x: 0, y: 0 });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [defaultWindowButtonColorPallete, _setDefaultWindowButtonColorPallete] =
-    useState([]);
-  const [
-    maximizedWindowButtonColorPallete,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _setMaximizedWindowButtonColorPallete,
-  ] = useState([]);
   const [contentLoading, setContentLoading] = useState(false);
+
+  // Window geometry state
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+  const [windowPosition, setWindowPosition] = useState({ x: 0, y: 0 });
+  const [prevWindowSize, setPrevWindowSize] = useState({ width: 0, height: 0 });
+  const [prevWindowPosition, setPrevWindowPosition] = useState({ x: 0, y: 0 });
 
   // Store state - select the specific window to react to changes
   const targetWindow = useWindowStore((state) =>
     state.windows.find((w) => w.key === windowKey)
   );
   const resizingCursor = useEventStore((state) => state.resizingCursor);
+
   // Store actions
   const closeWindow = useWindowStore((state) => state.closeWindow);
   const minimizeWindow = useWindowStore((state) => state.minimizeWindow);
-  const _restoreWindow = useWindowStore((state) => state.restoreWindow);
   const setResizingCursor = useEventStore((state) => state.setResizingCursor);
   const highlightWindow = useWindowStore((state) => state.highlightWindow);
   const prevWindow = useWindowStore((state) => state.prevWindow);
@@ -64,7 +58,6 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     if (targetWindow?.type === WindowType.Uploader) {
       setTitle(windowKey, "Uploader");
     } else if (targetWindow?.targetKey) {
-      // Extract filename from path
       const path = targetWindow.targetKey;
       const fileName = path.split("/").filter(Boolean).pop() || path;
       setTitle(windowKey, fileName);
@@ -81,7 +74,6 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     });
   }, [setCurrentWindow, windowKey]);
 
-  // Set current window to null when the mouse enters the window header
   const enterWindowHeader = useCallback(() => {
     setCurrentWindow(null);
   }, [setCurrentWindow]);
@@ -98,7 +90,7 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     }
   }, [targetWindow]);
 
-  // Set window size
+  // Apply window size to DOM
   useEffect(() => {
     if (windowRef.current) {
       windowRef.current.style.width = `${windowSize.width}px`;
@@ -106,7 +98,7 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     }
   }, [windowSize]);
 
-  // Set window position
+  // Apply window position to DOM
   useEffect(() => {
     if (windowRef.current) {
       windowRef.current.style.left = `${windowPosition.x}px`;
@@ -114,7 +106,7 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     }
   }, [windowPosition]);
 
-  // Maximize window
+  // Window controls
   const maximizeWindow = useCallback(() => {
     setPrevWindowSize(windowSize);
     setPrevWindowPosition(windowPosition);
@@ -126,14 +118,13 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     setMaximized(true);
   }, [windowPosition, windowSize]);
 
-  // Revert window size
   const revertWindowSize = useCallback(() => {
     setWindowSize(prevWindowSize);
     setWindowPosition(prevWindowPosition);
     setMaximized(false);
   }, [prevWindowSize, prevWindowPosition]);
 
-  // Move window
+  // Drag handlers
   const moveWindow = useCallback(
     (e: React.MouseEvent) => {
       if (
@@ -144,41 +135,29 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
         !resizingCursor
       ) {
         const headerRect = windowHeaderRef.current.getBoundingClientRect();
-        const x = e.clientX - headerRect.left;
-        const y = e.clientY - headerRect.top;
-        // Set window position
+        const offsetX = e.clientX - headerRect.left;
+        const offsetY = e.clientY - headerRect.top;
+
         const handleMouseMove = (e: MouseEvent) => {
           if (windowRef.current) {
             setWindowPosition({
-              x: e.clientX - x,
-              y: e.clientY - y,
+              x: e.clientX - offsetX,
+              y: e.clientY - offsetY,
             });
           }
         };
-        // Handle mouse move
+
         const handleMouseUp = () => {
           if (windowRef.current) {
-            const windowRect = windowRef.current.getBoundingClientRect();
-            const x = windowRect.left;
-            const y = windowRect.top;
-            let newX = x;
-            let newY = y;
-            // Check if the window is out of the screen
-            // If x or y is less than 0, set it to 0
-            if (x < 0) {
-              newX = 0;
-            }
-            if (y < 0) {
-              newY = 0;
-            }
-            // If x or y is greater than the screen width or height, set it to the screen width or height
-            if (x + windowSize.width > document.body.clientWidth) {
-              newX = document.body.clientWidth - windowSize.width;
-            }
-            if (y + windowSize.height > document.body.clientHeight) {
-              newY = document.body.clientHeight - windowSize.height;
-            }
-            // Set window position
+            const rect = windowRef.current.getBoundingClientRect();
+            const newX = Math.max(
+              0,
+              Math.min(rect.left, document.body.clientWidth - windowSize.width)
+            );
+            const newY = Math.max(
+              0,
+              Math.min(rect.top, document.body.clientHeight - windowSize.height)
+            );
             setWindowPosition({ x: newX, y: newY });
           }
           window.removeEventListener("mousemove", handleMouseMove);
@@ -192,7 +171,7 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     [resizingCursor, windowSize.height, windowSize.width]
   );
 
-  // change cursor on resize
+  // Resize cursor change
   const changeCursor = useCallback(
     (e: MouseEvent) => {
       if (!windowRef.current) return;
@@ -207,6 +186,7 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     },
     [setResizingCursor]
   );
+
   useEffect(() => {
     const currentWindow = windowRef.current;
     if (!currentWindow) return;
@@ -216,7 +196,7 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     };
   }, [changeCursor]);
 
-  // Resize window
+  // Resize handlers
   const resizeWindow = useCallback(
     (e: MouseEvent) => {
       if (!windowRef.current) return;
@@ -241,6 +221,7 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
     },
     [minWindowSize.width, minWindowSize.height, resizingCursor]
   );
+
   useEffect(() => {
     const currentWindow = windowRef.current;
     if (!currentWindow) return;
@@ -280,20 +261,10 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
           {
             action: maximized ? revertWindowSize : maximizeWindow,
             icon: maximized ? "exit_fullscreen" : "fullscreen",
-            style: {
-              color: maximized
-                ? maximizedWindowButtonColorPallete[0]
-                : defaultWindowButtonColorPallete[0],
-            },
           },
           {
             action: () => closeWindow(windowKey),
             icon: "close",
-            style: {
-              color: maximized
-                ? maximizedWindowButtonColorPallete[1]
-                : defaultWindowButtonColorPallete[1],
-            },
           },
         ]}
         onMouseEnter={enterWindowHeader}
