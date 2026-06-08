@@ -121,13 +121,11 @@ export default function FileMenu({
         { credentials: "include" }
       );
       if (result.status !== 200 || !result.data.downloadUrl?.downloadUrl) {
-        console.error("[FileMenu] Failed to get download URL");
         return;
       }
       const { downloadUrl } = result.data.downloadUrl;
       const response = await fetch(downloadUrl);
       if (!response.ok) {
-        console.error("[FileMenu] Download fetch failed:", response.status);
         return;
       }
       const blob = await response.blob();
@@ -139,8 +137,8 @@ export default function FileMenu({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("[FileMenu] Download failed:", error);
+    } catch {
+      // Download failed silently
     }
   }, [closeMenu, systemId, path, fileName]);
 
@@ -153,8 +151,8 @@ export default function FileMenu({
         systemId,
         data: { sources: paths, destination: "/home/.trash" },
       });
-    } catch (error) {
-      console.error("[FileMenu] Move to trash failed:", error);
+    } catch {
+      // Move to trash failed silently
     }
   }, [closeMenu, getTargetPaths, systemId, mvMutation]);
 
@@ -166,8 +164,8 @@ export default function FileMenu({
         systemId,
         data: { paths, recursive: true },
       });
-    } catch (error) {
-      console.error("[FileMenu] Permanent delete failed:", error);
+    } catch {
+      // Permanent delete failed silently
     }
   }, [closeMenu, getTargetPaths, systemId, rmMutation]);
 
@@ -188,8 +186,8 @@ export default function FileMenu({
           data: { paths, recursive: true },
         });
       }
-    } catch (error) {
-      console.error("[FileMenu] Empty trash failed:", error);
+    } catch {
+      // Empty trash failed silently
     }
   }, [closeMenu, path, systemId, rmMutation]);
 

@@ -12,11 +12,9 @@ export default function Template({ children }: { children: React.ReactNode }) {
     if (process.env.NODE_ENV === "development") {
       startMockService()
         .then(() => {
-          console.log("MSW started successfully");
           setMswReady(true);
         })
-        .catch((err) => {
-          console.error("Failed to start MSW:", err);
+        .catch(() => {
           setMswReady(true);
         });
     } else {

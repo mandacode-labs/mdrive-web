@@ -140,10 +140,6 @@ export default function DragFileContainer({
 
   // Drag file end
   const dragFileEnd = useCallback(async () => {
-    console.log("[DragFileContainer] dragFileEnd called", {
-      isDragging,
-      pointerMoved,
-    });
     setIsDragging(false);
     setIsDraggingReady(false);
     setDisplayDraggingElements(false);
@@ -206,7 +202,6 @@ export default function DragFileContainer({
     selectedFileSerials,
     unselectAllFiles,
     mvMutation,
-    isDragging,
   ]);
 
   // Event listeners

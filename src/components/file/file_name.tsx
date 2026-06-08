@@ -60,8 +60,7 @@ export default memo(function FileName({
           newName: newName.trim(),
         },
       });
-    } catch (error) {
-      console.error("[FileName] Rename failed:", error);
+    } catch {
       // Reset to original name on error
       setNewName(name);
     }

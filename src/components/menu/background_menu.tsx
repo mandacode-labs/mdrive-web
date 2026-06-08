@@ -43,10 +43,6 @@ export default function BackgroundMenu({
 
   const handleCreateFolder = useCallback(async () => {
     if (!path || !systemId) {
-      console.error(
-        "[BackgroundMenu] Cannot create folder: missing path or systemId",
-        { path, systemId }
-      );
       return;
     }
     closeMenu();
@@ -57,10 +53,6 @@ export default function BackgroundMenu({
     // Note: In production, you'd want to check existing folders first
 
     const folderPath = `${path === "/" ? "" : path}/${folderName}`;
-    console.log("[BackgroundMenu] Creating folder:", {
-      systemId,
-      path: folderPath,
-    });
 
     try {
       await mkdirMutation.mutateAsync({
@@ -73,8 +65,8 @@ export default function BackgroundMenu({
       queryClient.invalidateQueries({
         predicate: isFsQuery,
       });
-    } catch (error) {
-      console.error("[BackgroundMenu] Failed to create folder:", error);
+    } catch {
+      // Create folder failed silently
     }
   }, [path, systemId, closeMenu, mkdirMutation, queryClient]);
 

@@ -45,7 +45,6 @@ export default function SystemPage() {
   // Redirect to login on auth error (401)
   useEffect(() => {
     if (getUserQuery.data?.status === 401) {
-      console.error("Auth failed: 401 Unauthorized");
       router.push("/login");
     }
   }, [getUserQuery.data?.status, router]);

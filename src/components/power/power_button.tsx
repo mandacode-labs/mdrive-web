@@ -44,15 +44,8 @@ export default function PowerButton({ systemId }: PowerButtonProps) {
 
       if (response.ok) {
         router.push("/");
-      } else {
-        console.error(
-          "Failed to delete system:",
-          response.status,
-          response.statusText
-        );
       }
-    } catch (error) {
-      console.error("Failed to delete system:", error);
+    } catch {
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
