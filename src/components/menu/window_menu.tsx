@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { ls, useUnlink } from "@/api/generated";
-import { useCreateDirectory } from "@/api/hooks";
+import { ls } from "@/api/generated";
+import { useCreateDirectory, useDeleteFiles } from "@/api/hooks";
 import { useWindowStore } from "@/store/window.store";
 import { WindowType } from "@/types/window";
 import MenuList from "./menu_list";
@@ -24,7 +24,7 @@ export default function WindowMenu({
 
   // Mutations
   const mkdirMutation = useCreateDirectory();
-  const unlinkMutation = useUnlink();
+  const deleteFilesMutation = useDeleteFiles();
 
   // Handle upload action
   const handleUpload = useCallback(() => {
@@ -65,16 +65,18 @@ export default function WindowMenu({
     );
 
     if (readDirResult.data && "entries" in readDirResult.data) {
-      Promise.all(
-        readDirResult.data.entries.map((entry) =>
-          unlinkMutation.mutateAsync({
-            systemId,
-            params: { path: `${path === "/" ? "" : path}/${entry.name}` },
-          })
-        )
+      const paths = readDirResult.data.entries.map(
+        (entry) => `${path === "/" ? "" : path}/${entry.name}`
       );
+
+      if (paths.length > 0) {
+        await deleteFilesMutation.mutateAsync({
+          systemId,
+          data: { paths, recursive: true },
+        });
+      }
     }
-  }, [path, systemId, closeMenu, unlinkMutation]);
+  }, [path, systemId, closeMenu, deleteFilesMutation]);
 
   const handleRefresh = useCallback(() => {
     // Queries will be refreshed automatically by the mutations
