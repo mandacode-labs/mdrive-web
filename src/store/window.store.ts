@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getWindowConfig } from "@/config/window";
 import { type AppWindow, WindowType } from "@/types/window";
 import { createWindowKey } from "@/utils/random_key";
 
@@ -90,7 +91,8 @@ export const useWindowStore = create<State & Action>((set, get) => ({
           type,
           systemId,
         };
-        if (type === WindowType.Navigator) {
+        const config = getWindowConfig(type);
+        if (config.supportsHistory) {
           newWindow.targetHistory = [targetKey];
           newWindow.historyIndex = 0;
         }
