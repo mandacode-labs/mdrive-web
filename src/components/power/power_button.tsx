@@ -42,7 +42,8 @@ export default function PowerButton({ driveID }: PowerButtonProps) {
     try {
       await deleteDrive.mutateAsync({ driveID });
       router.push("/");
-    } catch {
+    } catch (error) {
+      console.error("[PowerButton] delete drive failed:", error);
       setIsDeleting(false);
       setShowDeleteConfirm(false);
       setShowDialog(false);
@@ -54,7 +55,8 @@ export default function PowerButton({ driveID }: PowerButtonProps) {
     try {
       await restoreDrive.mutateAsync({ driveID });
       setShowDialog(false);
-    } catch {
+    } catch (error) {
+      console.error("[PowerButton] restore drive failed:", error);
       setShowDialog(false);
     }
   };

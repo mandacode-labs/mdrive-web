@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { User } from "@/api/generated/model";
 import {
   getAuthMeQueryOptions,
   getAuthLogoutMutationOptions,
@@ -12,6 +13,8 @@ export function useMe() {
   return useQuery({
     ...getAuthMeQueryOptions(),
     retry: false,
+    select: (response): User | null =>
+      response.status === 200 ? (response.data as User) : null,
   });
 }
 
@@ -19,12 +22,7 @@ export function useDrives(enabled: boolean) {
   return useQuery({
     ...getListDrivesQueryOptions(),
     retry: false,
-    select: (response) => {
-      if (response.status === 200) {
-        return response.data;
-      }
-      return [];
-    },
+    select: (response) => (response.status === 200 ? response.data : []),
     enabled,
   });
 }

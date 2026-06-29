@@ -3,11 +3,8 @@ import {
   getMkdirMutationOptions,
   getMvMutationOptions,
   getRmMutationOptions,
-  getTouchMutationOptions,
-  getSymlinkMutationOptions,
-  getHardlinkMutationOptions,
 } from "@/api/generated";
-import { isFsQuery } from "@/api/utils";
+import { isFsQuery } from "@/utils/query_keys";
 
 export function useMkdir() {
   const queryClient = useQueryClient();
@@ -36,39 +33,6 @@ export function useRm() {
 
   return useMutation({
     ...getRmMutationOptions(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: isFsQuery });
-    },
-  });
-}
-
-export function useTouch() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...getTouchMutationOptions(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: isFsQuery });
-    },
-  });
-}
-
-export function useSymlink() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...getSymlinkMutationOptions(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: isFsQuery });
-    },
-  });
-}
-
-export function useHardlink() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...getHardlinkMutationOptions(),
     onSuccess: () => {
       queryClient.invalidateQueries({ predicate: isFsQuery });
     },

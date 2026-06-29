@@ -28,22 +28,23 @@ export default function DrivePage() {
 
   const backgroundWindowRef = useRef<HTMLDivElement>(null);
 
-  const getUserQuery = useMe();
+  const meQuery = useMe();
 
   const driveQuery = useDrive(driveID);
 
+  const isUnauthorized =
+    meQuery.isSuccess && meQuery.data === null && !meQuery.isFetching;
+
   useEffect(() => {
-    if (getUserQuery.data?.status === 401) {
+    if (isUnauthorized) {
       router.push("/login");
     }
-  }, [getUserQuery.data?.status, router]);
+  }, [isUnauthorized, router]);
 
-  // Create the background window once we have a confirmed drive.
   useEffect(() => {
     if (driveQuery.isSuccess && driveQuery.data?.status === 200 && driveID) {
-      const rootPath = driveQuery.data.data.rootNodeID ? "/" : "/";
       newBackgroundWindow({
-        targetKey: rootPath,
+        targetKey: "/",
         type: WindowType.Background,
         title: driveQuery.data.data.name || "background",
         key: backgroundWindowKey,
@@ -68,8 +69,8 @@ export default function DrivePage() {
   }, [backgroundWindowKey, setCurrentWindow]);
 
   if (
-    getUserQuery.isLoading ||
-    getUserQuery.isPending ||
+    meQuery.isLoading ||
+    meQuery.isPending ||
     !driveID ||
     driveQuery.isLoading ||
     driveQuery.isPending ||
@@ -78,9 +79,6 @@ export default function DrivePage() {
   ) {
     return <div className="flex-center full-size">Loading...</div>;
   }
-
-  const drive = driveQuery.data.data;
-  void drive;
 
   return (
     <div

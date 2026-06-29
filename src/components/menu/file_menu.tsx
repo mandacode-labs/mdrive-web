@@ -124,8 +124,8 @@ export default function FileMenu({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
-      // Errors are surfaced to the user via the global error handler if any.
+    } catch (error) {
+      console.error("[FileMenu] download failed:", error);
     }
   }, [closeMenu, driveID, path, fileName]);
 
@@ -137,8 +137,8 @@ export default function FileMenu({
         driveID,
         data: { paths, recursive: true },
       });
-    } catch {
-      // Handled via mutation state in the UI
+    } catch (error) {
+      console.error("[FileMenu] delete failed:", error);
     }
   }, [closeMenu, getTargetPaths, driveID, rmMutation]);
 

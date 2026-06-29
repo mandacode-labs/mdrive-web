@@ -54,8 +54,8 @@ export default function BackgroundMenu({
       queryClient.invalidateQueries({
         predicate: isFsQuery,
       });
-    } catch {
-      // Error is surfaced via the mutation's onError handler in the UI layer
+    } catch (error) {
+      console.error("[BackgroundMenu] create folder failed:", error);
     }
   }, [path, driveID, closeMenu, mkdirMutation, queryClient]);
 

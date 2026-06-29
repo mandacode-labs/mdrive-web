@@ -32,15 +32,12 @@ export interface MockFile {
 }
 
 const ISO = () => new Date().toISOString();
+const uid = () =>
+  `mock-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
 
 export const mockDrives: Map<string, MockDrive> = new Map();
 export const mockFiles: Map<string, MockFile> = new Map();
-export const mockInodeToPath: Map<string, string> = new Map();
 export const mockPathToInode: Map<string, string> = new Map();
-
-function uid() {
-  return `mock-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
-}
 
 function makeFile(
   driveID: string,
@@ -48,17 +45,19 @@ function makeFile(
   parentPath: string,
   name: string,
   type: FileType,
-  size = 0
+  size = 0,
+  inodeID: string = uid()
 ): MockFile {
   const isDir = type === BackendFileType.Directory;
-  const path = parentPath === "/" ? `/${name}` : `${parentPath}/${name}`;
-  const inodeID = uid();
+  const path = parentPath === "" || parentPath === "/"
+    ? (name === "root" ? "/" : `/${name}`)
+    : `${parentPath}/${name}`;
   const now = ISO();
   const file: MockFile = {
     inodeID,
     parentInodeID,
     driveID,
-    name,
+    name: name === "root" ? "/" : name,
     path,
     type,
     mode: isDir ? 0o040755 : 0o100644,
@@ -73,7 +72,6 @@ function makeFile(
     gid: "1000",
   };
   mockFiles.set(inodeID, file);
-  mockInodeToPath.set(inodeID, path);
   mockPathToInode.set(`${driveID}::${path}`, inodeID);
   return file;
 }
@@ -93,42 +91,17 @@ function initSampleDrive(driveID: string, name: string): MockDrive {
   };
   mockDrives.set(driveID, drive);
 
-  // Root directory
-  const root = makeFile(driveID, null, "", "root", BackendFileType.Directory);
-  mockFiles.delete(rootInodeID);
-  mockFiles.set(rootInodeID, { ...root, inodeID: rootInodeID, path: "/" });
-  mockInodeToPath.set(rootInodeID, "/");
-  mockPathToInode.set(`${driveID}::/`, rootInodeID);
+  // root directory (unique inodeID pre-generated so the drive stores it)
+  makeFile(driveID, null, "", "root", BackendFileType.Directory, 0, rootInodeID);
 
   // Sample structure under /home
   makeFile(driveID, rootInodeID, "/", "home", BackendFileType.Directory);
   makeFile(driveID, rootInodeID, "/home", "Documents", BackendFileType.Directory);
   makeFile(driveID, rootInodeID, "/home", "Pictures", BackendFileType.Directory);
   makeFile(driveID, rootInodeID, "/home", "Music", BackendFileType.Directory);
-  makeFile(
-    driveID,
-    rootInodeID,
-    "/home",
-    "README.md",
-    BackendFileType.Regular,
-    1024
-  );
-  makeFile(
-    driveID,
-    rootInodeID,
-    "/home/Pictures",
-    "sample.png",
-    BackendFileType.Regular,
-    2048
-  );
-  makeFile(
-    driveID,
-    rootInodeID,
-    "/home/Music",
-    "song.mp3",
-    BackendFileType.Regular,
-    4096
-  );
+  makeFile(driveID, rootInodeID, "/home", "README.md", BackendFileType.Regular, 1024);
+  makeFile(driveID, rootInodeID, "/home/Pictures", "sample.png", BackendFileType.Regular, 2048);
+  makeFile(driveID, rootInodeID, "/home/Music", "song.mp3", BackendFileType.Regular, 4096);
 
   return drive;
 }
@@ -161,26 +134,7 @@ export function createDrive(name: string, description?: string): MockDrive {
     updatedAt: now,
   };
   mockDrives.set(id, drive);
-  mockFiles.set(rootInodeID, {
-    inodeID: rootInodeID,
-    parentInodeID: null,
-    driveID: id,
-    name: "root",
-    path: "/",
-    type: BackendFileType.Directory,
-    mode: 0o040755,
-    size: 0,
-    ino: rootInodeID,
-    mtime: now,
-    ctime: now,
-    crtime: now,
-    atime: now,
-    nlink: 1,
-    uid: "1000",
-    gid: "1000",
-  });
-  mockPathToInode.set(`${id}::/`, rootInodeID);
-  mockInodeToPath.set(rootInodeID, "/");
+  makeFile(id, null, "", "root", BackendFileType.Directory, 0, rootInodeID);
   return drive;
 }
 
@@ -260,7 +214,6 @@ export function rmRecursive(driveID: string, paths: string[]): string[] {
       const f = mockFiles.get(inode);
       if (f) {
         mockPathToInode.delete(`${driveID}::${f.path}`);
-        mockInodeToPath.delete(inode);
         mockFiles.delete(inode);
         removed.push(f.path);
       }
@@ -291,7 +244,6 @@ export function mv(
       newPath = destination;
     }
 
-    // Update file path and parent
     mockPathToInode.delete(`${driveID}::${file.path}`);
     file.path = newPath;
     file.name = newPath.split("/").pop() ?? file.name;
@@ -305,7 +257,6 @@ export function mv(
     }
     file.mtime = ISO();
     mockPathToInode.set(`${driveID}::${newPath}`, file.inodeID);
-    mockInodeToPath.set(file.inodeID, newPath);
     moved.push(newPath);
   }
   return moved;
