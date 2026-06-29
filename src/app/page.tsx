@@ -18,8 +18,8 @@ export default function SystemSelectionPage() {
   const [driveName, setDriveName] = useState("");
   const [driveDescription, setDriveDescription] = useState("");
 
-  const getUserQuery = useMe();
-  const isAuthenticated = getUserQuery.data?.status === 200;
+  const meQuery = useMe();
+  const isAuthenticated = !!meQuery.data;
 
   const logoutMutation = useLogout();
   const listDrivesQuery = useDrives(isAuthenticated);
@@ -67,7 +67,7 @@ export default function SystemSelectionPage() {
     }
   };
 
-  if (getUserQuery.isLoading || getUserQuery.isPending) {
+  if (meQuery.isLoading || meQuery.isPending) {
     return (
       <div className={styles.xp_login}>
         <div className={styles.top_bar} />

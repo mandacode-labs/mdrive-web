@@ -5,8 +5,6 @@ import {
   getInitiateUploadMutationOptions,
   stat as statRequest,
 } from "@/api/generated";
-import { parseApiError } from "@/api/utils";
-import { md5Base64 } from "@/utils/md5";
 
 export type UploadStatus =
   | "pending"
@@ -23,7 +21,6 @@ export interface UploadTask {
   filePath: string;
   status: UploadStatus;
   progress: number;
-  bytesUploaded: number;
   totalBytes: number;
   error?: string;
   retryCount: number;
@@ -48,7 +45,6 @@ export function useUploadManager(driveID: string, basePath: string) {
   tasksRef.current = state.tasks;
 
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
-  const activeUploadsRef = useRef<number>(0);
   const isCancelledRef = useRef<Set<string>>(new Set());
 
   const initiateUpload = useMutation({
@@ -84,7 +80,6 @@ export function useUploadManager(driveID: string, basePath: string) {
 
       const abortController = new AbortController();
       abortControllersRef.current.set(taskId, abortController);
-      activeUploadsRef.current++;
 
       setState((prev) => ({
         ...prev,
@@ -109,8 +104,6 @@ export function useUploadManager(driveID: string, basePath: string) {
           }));
           return;
         }
-
-        const checksum = await md5Base64(await task.file.arrayBuffer());
 
         const initiateResult = await initiateUpload.mutateAsync({
           driveID,
@@ -165,7 +158,6 @@ export function useUploadManager(driveID: string, basePath: string) {
           uploadId,
           data: {
             contentLength: task.totalBytes,
-            checksum,
           },
         });
 
@@ -183,7 +175,8 @@ export function useUploadManager(driveID: string, basePath: string) {
           return;
         }
 
-        const errorMessage = parseApiError(error).message;
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
 
         const currentTask = tasksRef.current.find((t) => t.id === taskId);
         const retryCount = currentTask?.retryCount ?? 0;
@@ -220,7 +213,6 @@ export function useUploadManager(driveID: string, basePath: string) {
         }));
       } finally {
         abortControllersRef.current.delete(taskId);
-        activeUploadsRef.current--;
         isCancelledRef.current.delete(taskId);
 
         setState((prev) => ({
@@ -241,7 +233,6 @@ export function useUploadManager(driveID: string, basePath: string) {
         filePath: joinPath(basePath, file.name),
         status: "pending",
         progress: 0,
-        bytesUploaded: 0,
         totalBytes: file.size,
         retryCount: 0,
       }));
@@ -251,12 +242,10 @@ export function useUploadManager(driveID: string, basePath: string) {
         tasks: [...prev.tasks, ...newTasks],
       }));
 
-      setTimeout(async () => {
-        for (let i = 0; i < newTasks.length; i += CONCURRENCY) {
-          const batch = newTasks.slice(i, i + CONCURRENCY);
-          await Promise.allSettled(batch.map((task) => uploadFile(task.id)));
-        }
-      }, 0);
+      for (let i = 0; i < newTasks.length; i += CONCURRENCY) {
+        const batch = newTasks.slice(i, i + CONCURRENCY);
+        await Promise.allSettled(batch.map((task) => uploadFile(task.id)));
+      }
     },
     [uploadFile, basePath]
   );
@@ -297,7 +286,7 @@ export function useUploadManager(driveID: string, basePath: string) {
         ),
       }));
 
-      setTimeout(() => uploadFile(taskId), 0);
+      void uploadFile(taskId);
     },
     [uploadFile]
   );

@@ -43,7 +43,8 @@ export default memo(function FileName({
         path: fileKey,
         newName: newName.trim(),
       });
-    } catch {
+    } catch (error) {
+      console.error("[FileName] rename failed:", error);
       setNewName(name);
     }
 
