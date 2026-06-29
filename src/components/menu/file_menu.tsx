@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { getDownloadUrl, ls } from "@/api/generated";
-import { useDeleteFiles, useMoveFiles } from "@/api/hooks";
+import { presignDownload } from "@/api/generated";
+import { useRm } from "@/api/hooks";
 import { useFileStore } from "@/store/file.store";
 import { useWindowStore } from "@/store/window.store";
 import { BackendFileType, type FileType, VirtualFileType } from "@/types/file";
@@ -13,36 +13,28 @@ export default function FileMenu({
   fileType,
   fileName,
   windowKey,
-  parentWindowType,
   closeMenu,
 }: {
   path: string;
   fileType: FileType;
   fileName: string;
   windowKey: string;
-  parentWindowType: WindowType | null;
   closeMenu: () => void;
 }) {
-  // Get system ID from window store
   const windows = useWindowStore((state) => state.windows);
   const currentWindow = windows.find((w) => w.key === windowKey);
-  const systemId = currentWindow?.systemId || "";
+  const driveID = currentWindow?.driveID || "";
 
-  // Mutations
-  const rmMutation = useDeleteFiles();
-  const mvMutation = useMoveFiles();
+  const rmMutation = useRm();
 
-  // Store actions
   const newWindow = useWindowStore((state) => state.newWindow);
   const getSelectedFileKeys = useFileStore(
     (state) => state.getSelectedFileKeys
   );
   const setRenamingFile = useFileStore((state) => state.setRenamingFile);
 
-  // Get all selected file paths (includes the right-clicked file)
   const getTargetPaths = useCallback(() => {
     const selectedKeys = getSelectedFileKeys();
-    // Include the right-clicked file even if not in selection
     if (!selectedKeys.includes(path)) {
       return [path];
     }
@@ -60,7 +52,6 @@ export default function FileMenu({
         case BackendFileType.Directory:
         case VirtualFileType.Root:
         case VirtualFileType.Home:
-        case VirtualFileType.Trash:
           windowType = WindowType.Navigator;
           break;
         case BackendFileType.Object:
@@ -93,41 +84,35 @@ export default function FileMenu({
         targetKey: path,
         type: windowType,
         title: fileName,
-        systemId,
+        driveID,
       });
     },
-    [newWindow, systemId]
+    [newWindow, driveID]
   );
 
-  // Open file action
   const handleOpen = useCallback(async () => {
     closeMenu();
     openFile(fileType, fileName, path);
   }, [closeMenu, path, fileName, fileType, openFile]);
 
-  // Update file actions
   const handleRename = useCallback(() => {
     closeMenu();
     setRenamingFile({ fileKey: path, windowKey });
   }, [closeMenu, path, windowKey, setRenamingFile]);
 
-  // Download file actions
   const handleDownload = useCallback(async () => {
     closeMenu();
     try {
-      const result = await getDownloadUrl(
-        systemId,
+      const result = await presignDownload(
+        driveID,
         { path },
         { credentials: "include" }
       );
-      if (result.status !== 200 || !result.data.downloadUrl?.downloadUrl) {
-        console.error("[FileMenu] Failed to get download URL");
+      if (result.status !== 200 || !result.data?.url) {
         return;
       }
-      const { downloadUrl } = result.data.downloadUrl;
-      const response = await fetch(downloadUrl);
+      const response = await fetch(result.data.url);
       if (!response.ok) {
-        console.error("[FileMenu] Download fetch failed:", response.status);
         return;
       }
       const blob = await response.blob();
@@ -139,78 +124,33 @@ export default function FileMenu({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("[FileMenu] Download failed:", error);
+    } catch {
+      // Errors are surfaced to the user via the global error handler if any.
     }
-  }, [closeMenu, systemId, path, fileName]);
+  }, [closeMenu, driveID, path, fileName]);
 
-  // Move to trash action
-  const handleMoveToTrash = useCallback(async () => {
-    closeMenu();
-    try {
-      const paths = getTargetPaths();
-      await mvMutation.mutateAsync({
-        systemId,
-        data: { sources: paths, destination: "/home/.trash" },
-      });
-    } catch (error) {
-      console.error("[FileMenu] Move to trash failed:", error);
-    }
-  }, [closeMenu, getTargetPaths, systemId, mvMutation]);
-
-  const handlePermanentDelete = useCallback(async () => {
+  const handleDelete = useCallback(async () => {
     closeMenu();
     try {
       const paths = getTargetPaths();
       await rmMutation.mutateAsync({
-        systemId,
+        driveID,
         data: { paths, recursive: true },
       });
-    } catch (error) {
-      console.error("[FileMenu] Permanent delete failed:", error);
+    } catch {
+      // Handled via mutation state in the UI
     }
-  }, [closeMenu, getTargetPaths, systemId, rmMutation]);
+  }, [closeMenu, getTargetPaths, driveID, rmMutation]);
 
-  const handleEmptyTrash = useCallback(async () => {
-    closeMenu();
-    try {
-      const readDirResult = await ls(
-        systemId,
-        { path },
-        { credentials: "include" }
-      );
-      if (readDirResult.data && "entries" in readDirResult.data) {
-        const paths = readDirResult.data.entries.map(
-          (entry) => `${path === "/" ? "" : path}/${entry.name}`
-        );
-        await rmMutation.mutateAsync({
-          systemId,
-          data: { paths, recursive: true },
-        });
-      }
-    } catch (error) {
-      console.error("[FileMenu] Empty trash failed:", error);
-    }
-  }, [closeMenu, path, systemId, rmMutation]);
-
-  // Info action
   const handleInfo = useCallback(() => {
     closeMenu();
     newWindow({
       targetKey: path,
       type: WindowType.Info,
       title: `${fileName} Info`,
-      systemId,
+      driveID,
     });
-  }, [closeMenu, newWindow, path, fileName, systemId]);
-
-  // Delete file actions based on parent window type
-  const deleteMenu =
-    parentWindowType === WindowType.Trash
-      ? { name: "Permanent Delete", action: handlePermanentDelete }
-      : { name: "Move to Trash", action: handleMoveToTrash };
-
-  const infoItem = { name: "Info", action: handleInfo };
+  }, [closeMenu, newWindow, path, fileName, driveID]);
 
   switch (fileType) {
     case BackendFileType.Directory:
@@ -220,10 +160,10 @@ export default function FileMenu({
         <MenuList
           menuList={[
             { name: "Open", action: handleOpen },
-            infoItem,
+            { name: "Info", action: handleInfo },
             { name: "Rename", action: handleRename },
             { name: "/", action: () => {} },
-            deleteMenu,
+            { name: "Delete", action: handleDelete },
           ]}
         />
       );
@@ -233,10 +173,10 @@ export default function FileMenu({
           menuList={[
             { name: "Open", action: handleOpen },
             { name: "Download", action: handleDownload },
-            infoItem,
+            { name: "Info", action: handleInfo },
             { name: "Rename", action: handleRename },
             { name: "/", action: () => {} },
-            deleteMenu,
+            { name: "Delete", action: handleDelete },
           ]}
         />
       );
@@ -244,10 +184,11 @@ export default function FileMenu({
       return (
         <MenuList
           menuList={[
-            infoItem,
+            { name: "Download", action: handleDownload },
+            { name: "Info", action: handleInfo },
             { name: "Rename", action: handleRename },
             { name: "/", action: () => {} },
-            deleteMenu,
+            { name: "Delete", action: handleDelete },
           ]}
         />
       );
@@ -256,21 +197,15 @@ export default function FileMenu({
         <MenuList
           menuList={[
             { name: "Open", action: handleOpen },
-            infoItem,
+            { name: "Info", action: handleInfo },
             { name: "Rename", action: handleRename },
             { name: "/", action: () => {} },
-            deleteMenu,
+            { name: "Delete", action: handleDelete },
           ]}
         />
       );
     case VirtualFileType.Upload:
       return <MenuList menuList={[{ name: "Open", action: handleOpen }]} />;
-    case VirtualFileType.Trash:
-      return (
-        <MenuList
-          menuList={[{ name: "Empty Trash", action: handleEmptyTrash }]}
-        />
-      );
     default:
       return null;
   }

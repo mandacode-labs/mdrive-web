@@ -1,20 +1,18 @@
-import { useGetDownloadUrl } from "@/api/generated";
+import { usePresignDownload } from "@/api/generated";
 import { useWindowStore } from "@/store/window.store";
 import styles from "./video.module.css";
 
 export default function VideoViewer({ fileKey: path }: { fileKey: string }) {
-  // Get system ID from window store
   const windows = useWindowStore((state) => state.windows);
   const currentWindow = windows.find((w) => w.targetKey === path);
-  const systemId = currentWindow?.systemId || "";
+  const driveID = currentWindow?.driveID || "";
 
-  // Use Orval's generated hook directly
-  const downloadQuery = useGetDownloadUrl(
-    systemId,
+  const downloadQuery = usePresignDownload(
+    driveID,
     { path },
     {
       query: {
-        select: (data) => (data.status === 200 ? data.data.downloadUrl : null),
+        select: (data) => (data.status === 200 ? data.data.url : null),
       },
       fetch: { credentials: "include" },
     }
@@ -28,7 +26,7 @@ export default function VideoViewer({ fileKey: path }: { fileKey: string }) {
           className="full-size flex-center"
           style={{ objectFit: "contain" }}
         >
-          <source src={downloadQuery.data.downloadUrl} type="video/mp4" />
+          <source src={downloadQuery.data} type="video/mp4" />
           <track kind="captions" />
         </video>
       )}

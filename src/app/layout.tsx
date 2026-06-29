@@ -14,8 +14,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "RetroWin",
-  description: "Retro-style file manager",
+  title: "MDrive",
+  description: "MDrive file manager",
 };
 
 export default function RootLayout({

@@ -19,13 +19,13 @@ type Action = {
     type,
     title,
     key,
-    systemId,
+    driveID,
   }: {
     targetKey: string;
     type: WindowType;
     title: string;
     key?: string;
-    systemId?: string;
+    driveID?: string;
   }) => void;
   updateWindow: ({
     targetWindowKey,
@@ -69,26 +69,24 @@ export const useWindowStore = create<State & Action>((set, get) => ({
   windows: initialState.windows,
   currentWindow: initialState.currentWindow,
   mouseEnter: initialState.mouseEnter,
-  newWindow: ({ targetKey, type, title, key, systemId }) => {
+  newWindow: ({ targetKey, type, title, key, driveID }) => {
     set((state) => {
       const existingWindow = state.windows.find(
         (w) => w.targetKey === targetKey && w.type === type
       );
       if (existingWindow) {
-        // highlight existing window
         const filteredWindows = state.windows.filter(
           (w) => w.targetKey !== targetKey
         );
         state.windows = [...filteredWindows, existingWindow];
         return { windows: state.windows };
       } else {
-        // create new window
         const newWindow: AppWindow = {
           key: key || createWindowKey(),
           title: title || "New Window",
           targetKey: targetKey,
           type,
-          systemId,
+          driveID,
         };
         if (type === WindowType.Navigator) {
           newWindow.targetHistory = [targetKey];

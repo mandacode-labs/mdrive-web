@@ -13,7 +13,7 @@ interface UploaderProps {
 export default function Uploader({ targetPath }: UploaderProps) {
   const windows = useWindowStore((state) => state.windows);
   const currentWindow = windows.find((w) => w.targetKey === targetPath);
-  const systemId = currentWindow?.systemId || "";
+  const driveID = currentWindow?.driveID || "";
 
   const {
     tasks,
@@ -22,7 +22,7 @@ export default function Uploader({ targetPath }: UploaderProps) {
     retryUpload,
     removeTask,
     clearCompleted,
-  } = useUploadManager(systemId);
+  } = useUploadManager(driveID, targetPath);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -58,43 +58,9 @@ export default function Uploader({ targetPath }: UploaderProps) {
     setIsDragOver(false);
   }, []);
 
-  const handleClickDropZone = useCallback(() => {
+  const openFilePicker = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Pending...";
-      case "uploading":
-        return "Uploading...";
-      case "completed":
-        return "Completed";
-      case "failed":
-        return "Failed";
-      case "cancelled":
-        return "Cancelled";
-      case "skipped":
-        return "Already exists";
-      default:
-        return status;
-    }
-  };
-
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case "completed":
-        return styles.statusCompleted;
-      case "failed":
-        return styles.statusFailed;
-      case "skipped":
-        return styles.statusSkipped;
-      case "uploading":
-        return styles.statusUploading;
-      default:
-        return "";
-    }
-  };
 
   const completedCount = tasks.filter((t) => t.status === "completed").length;
   const failedCount = tasks.filter(
@@ -103,126 +69,157 @@ export default function Uploader({ targetPath }: UploaderProps) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <span>File Upload</span>
-      </div>
-
-      <button
-        type="button"
+      <section
         className={`${styles.dropZone} ${isDragOver ? styles.dropZoneActive : ""}`}
-        onClick={handleClickDropZone}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
+        aria-label="File drop zone"
       >
-        Drag and drop files here or click to select
-      </button>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        className={styles.fileInput}
-        multiple
-        onChange={handleFileSelect}
-      />
+        <div className={styles.dropZoneIcon}>
+          <XPImageIcons.Upload />
+        </div>
+        <div className={styles.dropZoneText}>
+          Drop files here or
+          <button
+            type="button"
+            className={styles.browseButton}
+            onClick={openFilePicker}
+          >
+            Browse
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className={styles.fileInput}
+          multiple
+          onChange={handleFileSelect}
+        />
+      </section>
 
       <div className={styles.fileList}>
         {tasks.length === 0 ? (
-          <div style={{ textAlign: "center", color: "#999", padding: "20px" }}>
-            No files to upload
+          <div className={styles.emptyState}>
+            No files queued. Drop files above to upload.
           </div>
         ) : (
-          tasks.map((task) => (
-            <div key={task.id} className={styles.task}>
-              <div style={{ width: 24, height: 24, flexShrink: 0 }}>
-                <XPImageIcons.File />
-              </div>
-
-              <span className={styles.fileName} title={task.fileName}>
-                {task.fileName}
-              </span>
-
-              {task.status === "uploading" && (
-                <div className={styles.progressBar}>
-                  <div
-                    className={styles.progressBarFill}
-                    style={{ width: `${task.progress}%` }}
-                  />
-                  <span className={styles.progressText}>
-                    {Math.round(task.progress)}%
-                  </span>
+          <ul className={styles.taskList}>
+            {tasks.map((task) => (
+              <li key={task.id} className={styles.task}>
+                <div className={styles.taskIcon}>
+                  <XPImageIcons.File />
                 </div>
-              )}
-
-              <span
-                className={`${styles.status} ${getStatusClass(task.status)}`}
-              >
-                {getStatusText(task.status)}
-              </span>
-
-              {task.status === "uploading" && (
-                <button
-                  type="button"
-                  className={styles.actionButton}
-                  onClick={() => cancelUpload(task.id)}
+                <div className={styles.taskFileName} title={task.fileName}>
+                  {task.fileName}
+                </div>
+                <div className={styles.taskProgress}>
+                  {task.status === "uploading" ? (
+                    <div className={styles.progressBar}>
+                      <div
+                        className={styles.progressBarFill}
+                        style={{ width: `${task.progress}%` }}
+                      />
+                      <span className={styles.progressText}>
+                        {Math.round(task.progress)}%
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+                <div
+                  className={`${styles.taskStatus} ${statusClass(task.status, styles)}`}
                 >
-                  Cancel
-                </button>
-              )}
-
-              {task.status === "failed" && (
-                <>
-                  <button
-                    type="button"
-                    className={styles.actionButton}
-                    onClick={() => retryUpload(task.id)}
-                  >
-                    Retry
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.actionButton}
-                    onClick={() => removeTask(task.id)}
-                  >
-                    Remove
-                  </button>
-                </>
-              )}
-
-              {(task.status === "completed" ||
-                task.status === "skipped" ||
-                task.status === "cancelled") && (
-                <button
-                  type="button"
-                  className={styles.actionButton}
-                  onClick={() => removeTask(task.id)}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          ))
+                  {statusText(task.status)}
+                </div>
+                <div className={styles.taskActions}>
+                  {task.status === "uploading" && (
+                    <button
+                      type="button"
+                      className={styles.actionButton}
+                      onClick={() => cancelUpload(task.id)}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  {task.status === "failed" && (
+                    <button
+                      type="button"
+                      className={styles.actionButton}
+                      onClick={() => retryUpload(task.id)}
+                    >
+                      Retry
+                    </button>
+                  )}
+                  {(task.status === "failed" ||
+                    task.status === "completed" ||
+                    task.status === "skipped" ||
+                    task.status === "cancelled") && (
+                    <button
+                      type="button"
+                      className={styles.actionButton}
+                      onClick={() => removeTask(task.id)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
       {tasks.length > 0 && (
         <div className={styles.footer}>
-          <span style={{ fontSize: 11, color: "#666" }}>
-            Completed: {completedCount} / {tasks.length}
-            {failedCount > 0 && ` (Failed: ${failedCount})`}
+          <span className={styles.footerText}>
+            {completedCount} / {tasks.length} completed
+            {failedCount > 0 ? `, ${failedCount} failed` : ""}
           </span>
-
           {completedCount > 0 && (
             <button
               type="button"
               className={styles.actionButton}
               onClick={clearCompleted}
             >
-              Clear Completed
+              Clear completed
             </button>
           )}
         </div>
       )}
     </div>
   );
+}
+
+function statusText(status: string): string {
+  switch (status) {
+    case "pending":
+      return "Pending";
+    case "uploading":
+      return "Uploading";
+    case "completed":
+      return "Done";
+    case "failed":
+      return "Failed";
+    case "cancelled":
+      return "Cancelled";
+    case "skipped":
+      return "Skipped";
+    default:
+      return status;
+  }
+}
+
+function statusClass(status: string, styles: Record<string, string>): string {
+  switch (status) {
+    case "completed":
+      return styles.statusCompleted ?? "";
+    case "failed":
+      return styles.statusFailed ?? "";
+    case "skipped":
+      return styles.statusSkipped ?? "";
+    case "uploading":
+      return styles.statusUploading ?? "";
+    default:
+      return "";
+  }
 }

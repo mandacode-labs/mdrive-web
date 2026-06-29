@@ -1,18 +1,15 @@
 import { forwardRef, memo } from "react";
-import type { ApiFileType } from "@/types/api";
+import type { BackendFileType } from "@/types/file";
 import styles from "./file_detail.module.css";
 
-/**
- * File detail component
- * @param fileName - name of the file
- * @param fileType - type of the file
- * @param bytes - size of the file
- * @param created - created date of the file
- * @param modified - modified date of the file
- * @returns - File detail component
- * @example
- * <FileDetail fileName="example.txt" fileType="text" bytes={1024} created={new Date()} modified={new Date()} />
- */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(2)} KB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(2)} MB`;
+  if (bytes < 1024 ** 4) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+  return `${(bytes / 1024 ** 4).toFixed(2)} TB`;
+}
+
 export default memo(
   forwardRef(function FileDetail(
     {
@@ -23,7 +20,7 @@ export default memo(
       modified,
     }: {
       fileName: string;
-      fileType: ApiFileType;
+      fileType: BackendFileType;
       bytes: number;
       created: Date;
       modified: Date;
@@ -42,24 +39,7 @@ export default memo(
         </div>
         <div className={styles.detail_item}>
           <div className={styles.detail_item_name}>size</div>
-          {bytes < 1024 && (
-            <div className={styles.detail_item_text}>{bytes} B</div>
-          )}
-          {bytes >= 1024 && bytes < 1024 ** 2 && (
-            <div className={styles.detail_item_text}>
-              {(bytes / 1024).toFixed(2)} KB
-            </div>
-          )}
-          {bytes >= 1024 ** 2 && bytes < 1024 ** 3 && (
-            <div className={styles.detail_item_text}>
-              {(bytes / 1024 ** 2).toFixed(2)} MB
-            </div>
-          )}
-          {bytes >= 1024 ** 3 && bytes < 1024 ** 4 && (
-            <div className={styles.detail_item_text}>
-              {(bytes / 1024 ** 3).toFixed(2)} GB
-            </div>
-          )}
+          <div className={styles.detail_item_text}>{formatBytes(bytes)}</div>
         </div>
         <div className={styles.detail_item}>
           <div className={styles.detail_item_name}>created</div>

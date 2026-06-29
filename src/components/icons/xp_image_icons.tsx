@@ -132,6 +132,7 @@ export const XPImageIcons = {
       width={iconSize}
       height={iconSize}
       unoptimized
+      priority
     />
   ),
 

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { useCreateDirectory } from "@/api/hooks";
+import { useMkdir } from "@/api/hooks";
 import { useWindowStore } from "@/store/window.store";
 import { WindowType } from "@/types/window";
 import { isFsQuery } from "@/utils/query_keys";
@@ -13,20 +13,16 @@ export default function BackgroundMenu({
   path: string;
   closeMenu: () => void;
 }) {
-  // Query client
   const queryClient = useQueryClient();
 
-  // Get system ID from window store
   const windows = useWindowStore((state) => state.windows);
   const backgroundWindow = windows.find(
     (w) => w.type === WindowType.Background
   );
-  const systemId = backgroundWindow?.systemId || "";
+  const driveID = backgroundWindow?.driveID || "";
 
-  // Mutations
-  const mkdirMutation = useCreateDirectory();
+  const mkdirMutation = useMkdir();
 
-  // Store actions
   const newWindow = useWindowStore((state) => state.newWindow);
 
   const handleUpload = useCallback(() => {
@@ -35,48 +31,33 @@ export default function BackgroundMenu({
         targetKey: path,
         type: WindowType.Uploader,
         title: "Uploader",
-        systemId,
+        driveID,
       });
       closeMenu();
     }
-  }, [path, systemId, newWindow, closeMenu]);
+  }, [path, driveID, newWindow, closeMenu]);
 
   const handleCreateFolder = useCallback(async () => {
-    if (!path || !systemId) {
-      console.error(
-        "[BackgroundMenu] Cannot create folder: missing path or systemId",
-        { path, systemId }
-      );
+    if (!path || !driveID) {
       return;
     }
     closeMenu();
 
-    // Find a unique folder name
     const folderName = "New Folder";
-    const _counter = 1;
-    // Note: In production, you'd want to check existing folders first
-
     const folderPath = `${path === "/" ? "" : path}/${folderName}`;
-    console.log("[BackgroundMenu] Creating folder:", {
-      systemId,
-      path: folderPath,
-    });
 
     try {
       await mkdirMutation.mutateAsync({
-        systemId,
-        data: {
-          path: folderPath,
-          mode: 0o755,
-        },
+        driveID,
+        data: { path: folderPath },
       });
       queryClient.invalidateQueries({
         predicate: isFsQuery,
       });
-    } catch (error) {
-      console.error("[BackgroundMenu] Failed to create folder:", error);
+    } catch {
+      // Error is surfaced via the mutation's onError handler in the UI layer
     }
-  }, [path, systemId, closeMenu, mkdirMutation, queryClient]);
+  }, [path, driveID, closeMenu, mkdirMutation, queryClient]);
 
   const handleRefresh = useCallback(() => {
     queryClient.invalidateQueries({

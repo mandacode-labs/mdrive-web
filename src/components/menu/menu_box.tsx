@@ -63,7 +63,6 @@ export default function MenuBox({ children }: { children: React.ReactNode }) {
             setTargetFileKey(validWindow.targetKey);
             break;
           case WindowType.Navigator:
-          case WindowType.Trash:
             setMenuType("window");
             setTargetFileKey(validWindow.targetKey);
             break;
@@ -147,7 +146,6 @@ export default function MenuBox({ children }: { children: React.ReactNode }) {
               fileName={targetFile.fileName}
               fileType={targetFile.fileType}
               windowKey={currentWindow?.key || getBackgroundWindow()?.key || ""}
-              parentWindowType={windowType}
               closeMenu={closeMenu}
             />
           )}

@@ -1,5 +1,5 @@
 import type { Query } from "@tanstack/react-query";
-import type { ErrorError } from "@/api/generated/model";
+import type { Error } from "@/api/generated/model";
 
 export interface ApiError {
   status: number;
@@ -19,12 +19,12 @@ export function parseApiError(error: unknown): ApiError {
   }
 
   if (typeof error === "object" && error !== null) {
-    const err = error as { data?: { error?: ErrorError }; status?: number };
-    if (err.data?.error) {
+    const err = error as { data?: Error; status?: number };
+    if (err.data?.code) {
       return {
         status: err.status ?? 500,
-        code: err.data.error.type,
-        message: err.data.error.message,
+        code: err.data.code,
+        message: err.data.message,
         raw: error,
       };
     }
@@ -50,27 +50,27 @@ export function isConflictError(error: ApiError): boolean {
   return error.status === 409;
 }
 
-export const FS_PREFIXES = ["/api/fs/", "/api/syscall/"] as const;
-export const LS_SUFFIX = "/ls";
-export const STAT_SUFFIX = "/stat";
+export const FS_PATH_PREFIX = "/api/v1/drives";
+export const LS_SUFFIX = "/fs/ls";
+export const STAT_SUFFIX = "/fs/stat";
 
 export function isFsQuery(query: Query): boolean {
   const queryKey = query.queryKey[0] as string;
   return (
-    FS_PREFIXES.some((prefix) => queryKey.startsWith(prefix)) &&
-    (queryKey.endsWith(LS_SUFFIX) || queryKey.endsWith(STAT_SUFFIX))
+    queryKey.startsWith(FS_PATH_PREFIX) &&
+    (queryKey.includes(LS_SUFFIX) || queryKey.includes(STAT_SUFFIX))
   );
 }
 
-export function isSystemQuery(query: Query, systemId?: string): boolean {
+export function isDriveQuery(query: Query, driveID?: string): boolean {
   const queryKey = query.queryKey[0] as string;
-  if (systemId) {
-    return queryKey.includes(`/api/systems/${systemId}`);
+  if (driveID) {
+    return queryKey.includes(`/api/v1/drives/${driveID}`);
   }
-  return queryKey.startsWith("/api/systems/");
+  return queryKey.startsWith("/api/v1/drives");
 }
 
 export function isUploadQuery(query: Query): boolean {
   const queryKey = query.queryKey[0] as string;
-  return queryKey.includes("/upload/");
+  return queryKey.includes("/uploads/");
 }

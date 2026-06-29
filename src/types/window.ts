@@ -1,7 +1,6 @@
 export enum WindowType {
   Background = "background",
   Navigator = "navigator",
-  Trash = "trash",
   Image = "image",
   Video = "video",
   Audio = "audio",
@@ -16,7 +15,7 @@ export interface AppWindow {
   title: string;
   targetKey: string;
   type: WindowType;
-  systemId?: string;
+  driveID?: string;
   targetHistory?: string[];
   historyIndex?: number;
   minimized?: boolean;

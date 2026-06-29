@@ -11,7 +11,6 @@ import styles from "./window_content.module.css";
 const contentComponents: Partial<Record<WindowType, React.ComponentType<any>>> =
   {
     [WindowType.Navigator]: Navigator,
-    [WindowType.Trash]: Navigator,
     [WindowType.Uploader]: Uploader,
     [WindowType.Image]: ImageViewer,
     [WindowType.Video]: VideoViewer,
@@ -27,7 +26,6 @@ function getContentProps(
 ) {
   switch (type) {
     case WindowType.Navigator:
-    case WindowType.Trash:
       return { path: fileKey, windowKey, setLoading };
     case WindowType.Uploader:
       return { targetPath: fileKey };

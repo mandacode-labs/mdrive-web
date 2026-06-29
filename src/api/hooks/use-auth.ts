@@ -1,25 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getCreateSystemMutationOptions,
-  getGetUserQueryOptions,
-  getListSystemsQueryOptions,
-  getLogoutMutationOptions,
+  getAuthMeQueryOptions,
+  getAuthLogoutMutationOptions,
+  getCreateDriveMutationOptions,
+  getListDrivesQueryOptions,
+  getDeleteDriveMutationOptions,
+  getRestoreDriveMutationOptions,
 } from "@/api/generated";
 
-export function useUser() {
+export function useMe() {
   return useQuery({
-    ...getGetUserQueryOptions(),
+    ...getAuthMeQueryOptions(),
     retry: false,
   });
 }
 
-export function useSystems(enabled: boolean) {
+export function useDrives(enabled: boolean) {
   return useQuery({
-    ...getListSystemsQueryOptions(),
+    ...getListDrivesQueryOptions(),
     retry: false,
     select: (response) => {
       if (response.status === 200) {
-        return response.data.systems;
+        return response.data;
       }
       return [];
     },
@@ -31,20 +33,48 @@ export function useLogout() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    ...getLogoutMutationOptions(),
+    ...getAuthLogoutMutationOptions(),
     onSuccess: () => {
-      queryClient.removeQueries({ queryKey: ["/api/user"] });
+      queryClient.removeQueries();
     },
   });
 }
 
-export function useCreateSystem() {
+export function useCreateDrive() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    ...getCreateSystemMutationOptions(),
+    ...getCreateDriveMutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/systems"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
     },
   });
+}
+
+export function useDeleteDrive() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...getDeleteDriveMutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
+    },
+  });
+}
+
+export function useRestoreDrive() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...getRestoreDriveMutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
+    },
+  });
+}
+
+export function useGoogleLogin() {
+  return () => {
+    window.location.href = "/api/auth/google";
+  };
 }

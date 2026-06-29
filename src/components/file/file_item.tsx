@@ -13,47 +13,32 @@ import FileIcon from "./file_icon";
 import styles from "./file_item.module.css";
 import FileName from "./file_name";
 
-/**
- * File item component
- * @param name - name of the file
- * @param type - type of the file
- * @param fileKey - key of the file
- * @param windowKey - key of the window
- * @param backgroundFile - Is background file
- * @returns - File item component
- * @example
- * <FileItem name="file" type={BackendFileType.Directory} fileKey="e03431b7-6d67-4ee2-9224-e93dc04f25c4" windowKey="421b0ad1f948" />
- */
 export default memo(function FileItem({
   name,
   type,
   fileKey,
   windowKey,
-  systemId,
+  driveID,
   backgroundFile = false,
 }: {
   name: string;
   type: FileType;
   fileKey: string;
   windowKey: string;
-  systemId?: string;
+  driveID?: string;
   backgroundFile?: boolean;
 }) {
-  // constants
   const serialKey = createSerialKey(fileKey, windowKey);
   const selectedFileBackground = "#f0f0f033";
   const selectedFile = "#55555533";
 
-  // States
   const [icon, setIcon] = useState<FileIconType | null>(null);
 
-  // Store state
   const selectedFileSerials = useFileStore(
     (state) => state.selectedFileSerials
   );
   const selectBox = useFileStore((state) => state.selectBoxRect);
   const targetWindow = useFileStore((state) => state.selectBoxWindowKey);
-  // Store actions
   const setFileIconRef = useFileStore((state) => state.setFileIconRef);
   const setHighlightedFile = useFileStore((state) => state.setHighlightedFile);
   const selectFile = useFileStore((state) => state.selectFile);
@@ -64,25 +49,25 @@ export default memo(function FileItem({
   );
   const updateWindow = useWindowStore((state) => state.updateWindow);
 
-  // Refs
   const fileRef = useRef<HTMLDivElement>(null);
   const iconRef = useRef<HTMLButtonElement>(null);
 
-  // Check if trash has content
-  const trashLsQuery = useLs(
-    systemId || "",
+  // For virtual "upload" file, show whether the target dir already has any
+  // children to indicate it can accept uploads.
+  const dirLsQuery = useLs(
+    driveID || "",
     { path: fileKey },
     {
       query: {
         select: (data) =>
           data.status === 200 ? (data.data.entries?.length ?? 0) > 0 : false,
-        enabled: !!systemId && type === VirtualFileType.Trash,
+        enabled:
+          !!driveID && type === VirtualFileType.Upload && fileKey.length > 0,
       },
       fetch: { credentials: "include" },
     }
   );
 
-  // Get background window key
   const backgroundWindowKey = useMemo(() => {
     const backgroundWindow = getBackgroundWindow();
     return backgroundWindow?.key || "";
@@ -102,7 +87,6 @@ export default memo(function FileItem({
     setHighlightedFile(null);
   }, [setHighlightedFile]);
 
-  // Check if the file is in the select box
   const checkFileInSelectBox = useCallback(() => {
     if (!selectBox) return;
     if (!fileRef.current) return;
@@ -129,41 +113,34 @@ export default memo(function FileItem({
     windowKey,
   ]);
 
-  // Check if the file is in the select box
   useEffect(() => {
     checkFileInSelectBox();
   }, [checkFileInSelectBox]);
 
-  // Set icon type
   useEffect(() => {
     setIcon(getIconType(type, name));
   }, [type, name]);
 
-  // Assign fileRef to store
   useEffect(() => {
     setFileIconRef(fileKey, windowKey, iconRef);
   }, [fileKey, setFileIconRef, windowKey]);
 
-  // Single click: select file
   const handleSingleClick = useCallback(() => {
     selectFile(fileKey, windowKey);
   }, [fileKey, selectFile, windowKey]);
 
-  // Double click: open file
   const handleDoubleClick = useCallback(() => {
     const winType = getWindowType(type, name);
     if (winType === null) return;
 
     if (windowKey === backgroundWindowKey) {
-      // On background window: open a new window
       newWindow({
         targetKey: fileKey,
         type: winType,
         title: name,
-        systemId,
+        driveID,
       });
     } else if (winType === WindowType.Navigator) {
-      // Navigator → Navigator: update in place
       setHighlightedFile(null);
       updateWindow({
         targetWindowKey: windowKey,
@@ -171,12 +148,11 @@ export default memo(function FileItem({
         title: name,
       });
     } else {
-      // Non-navigator (image, video, audio, etc.): open a new window
       newWindow({
         targetKey: fileKey,
         type: winType,
         title: name,
-        systemId,
+        driveID,
       });
     }
   }, [
@@ -185,7 +161,7 @@ export default memo(function FileItem({
     name,
     newWindow,
     setHighlightedFile,
-    systemId,
+    driveID,
     type,
     updateWindow,
     windowKey,
@@ -212,9 +188,7 @@ export default memo(function FileItem({
               onDoubleClick={handleDoubleClick}
               icon={icon}
               fileName={name}
-              hasContent={
-                type === VirtualFileType.Trash ? !!trashLsQuery.data : false
-              }
+              hasContent={type === VirtualFileType.Upload ? !!dirLsQuery.data : false}
             />
           )}
           <FileName

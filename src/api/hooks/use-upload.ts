@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   getCompleteUploadMutationOptions,
   getInitiateUploadMutationOptions,
-  statPath,
+  stat as statRequest,
 } from "@/api/generated";
 import { parseApiError } from "@/api/utils";
 import { md5Base64 } from "@/utils/md5";
@@ -20,6 +20,7 @@ export interface UploadTask {
   id: string;
   file: File;
   fileName: string;
+  filePath: string;
   status: UploadStatus;
   progress: number;
   bytesUploaded: number;
@@ -37,13 +38,12 @@ const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 2000, 4000];
 const CONCURRENCY = 5;
 
-export function useUploadManager(systemId: string) {
+export function useUploadManager(driveID: string, basePath: string) {
   const [state, setState] = useState<UploadManagerState>({
     tasks: [],
     isUploading: false,
   });
 
-  // Use ref to always access latest state without stale closure issues
   const tasksRef = useRef<UploadTask[]>([]);
   tasksRef.current = state.tasks;
 
@@ -60,20 +60,19 @@ export function useUploadManager(systemId: string) {
   });
 
   const checkDuplicate = useCallback(
-    async (path: string): Promise<boolean> => {
+    async (filePath: string): Promise<boolean> => {
       try {
-        const result = await statPath(systemId, { path });
+        const result = await statRequest(driveID, { path: filePath });
         return result.status === 200;
       } catch {
         return false;
       }
     },
-    [systemId]
+    [driveID]
   );
 
   const uploadFile = useCallback(
     async (taskId: string) => {
-      // Get task from ref to avoid stale closure
       const task = tasksRef.current.find((t) => t.id === taskId);
       if (
         !task ||
@@ -98,10 +97,7 @@ export function useUploadManager(systemId: string) {
       }));
 
       try {
-        const filePath = `${task.fileName}`;
-
-        // Check for duplicate
-        const exists = await checkDuplicate(filePath);
+        const exists = await checkDuplicate(task.filePath);
         if (exists) {
           setState((prev) => ({
             ...prev,
@@ -114,39 +110,39 @@ export function useUploadManager(systemId: string) {
           return;
         }
 
-        // Compute checksum
-        const fileBuffer = await task.file.arrayBuffer();
-        const checksum = await md5Base64(fileBuffer);
-        const idempotencyKey = crypto.randomUUID();
+        const checksum = await md5Base64(await task.file.arrayBuffer());
 
-        // Step 1: Initiate upload
         const initiateResult = await initiateUpload.mutateAsync({
-          systemId,
+          driveID,
           data: {
-            path: filePath,
+            path: task.filePath,
             contentType: task.file.type,
-            size: task.totalBytes,
-            checksum,
-            idempotencyKey,
+            contentLength: task.totalBytes,
           },
         });
 
         if (
-          initiateResult.status !== 201 ||
-          !initiateResult.data.uploadSession
+          initiateResult.status !== 200 ||
+          !initiateResult.data?.uploadId ||
+          !initiateResult.data.url
         ) {
           throw new Error("Failed to initiate upload");
         }
 
-        const { objectId, uploadUrl } = initiateResult.data.uploadSession;
+        const {
+          uploadId,
+          method,
+          url,
+          headers: presignedHeaders,
+        } = initiateResult.data;
 
-        // Step 2: Upload to S3 with progress tracking
-        await uploadToS3(
-          uploadUrl,
+        await uploadToPresignedUrl(
+          url,
+          method,
+          presignedHeaders,
           task.file,
           abortController.signal,
           (progress) => {
-            // Check if cancelled during upload
             if (isCancelledRef.current.has(taskId)) {
               abortController.abort();
               return;
@@ -160,21 +156,19 @@ export function useUploadManager(systemId: string) {
           }
         );
 
-        // Check if cancelled after S3 upload
         if (isCancelledRef.current.has(taskId)) {
           return;
         }
 
-        // Step 3: Complete upload
         await completeUpload.mutateAsync({
-          systemId,
+          driveID,
+          uploadId,
           data: {
-            objectId,
-            path: filePath,
+            contentLength: task.totalBytes,
+            checksum,
           },
         });
 
-        // Success
         setState((prev) => ({
           ...prev,
           tasks: prev.tasks.map((t) =>
@@ -191,17 +185,14 @@ export function useUploadManager(systemId: string) {
 
         const errorMessage = parseApiError(error).message;
 
-        // Get current retry count from ref
         const currentTask = tasksRef.current.find((t) => t.id === taskId);
         const retryCount = currentTask?.retryCount ?? 0;
 
-        // Auto-retry if not maxed out
         if (retryCount < MAX_RETRIES) {
           const delay =
             RETRY_DELAYS[retryCount] ?? RETRY_DELAYS[RETRY_DELAYS.length - 1];
           await new Promise((resolve) => setTimeout(resolve, delay));
 
-          // Check if cancelled during retry delay
           if (isCancelledRef.current.has(taskId)) {
             return;
           }
@@ -215,12 +206,10 @@ export function useUploadManager(systemId: string) {
             ),
           }));
 
-          // Retry
           await uploadFile(taskId);
           return;
         }
 
-        // Max retries reached
         setState((prev) => ({
           ...prev,
           tasks: prev.tasks.map((t) =>
@@ -240,7 +229,7 @@ export function useUploadManager(systemId: string) {
         }));
       }
     },
-    [systemId, initiateUpload, completeUpload, checkDuplicate]
+    [driveID, initiateUpload, completeUpload, checkDuplicate]
   );
 
   const addFiles = useCallback(
@@ -249,6 +238,7 @@ export function useUploadManager(systemId: string) {
         id: crypto.randomUUID(),
         file,
         fileName: file.name,
+        filePath: joinPath(basePath, file.name),
         status: "pending",
         progress: 0,
         bytesUploaded: 0,
@@ -261,20 +251,14 @@ export function useUploadManager(systemId: string) {
         tasks: [...prev.tasks, ...newTasks],
       }));
 
-      // Upload with concurrency control
-      // Use setTimeout to allow state update to complete first
       setTimeout(async () => {
-        const executeBatch = async (batch: UploadTask[]) => {
-          await Promise.allSettled(batch.map((task) => uploadFile(task.id)));
-        };
-
         for (let i = 0; i < newTasks.length; i += CONCURRENCY) {
           const batch = newTasks.slice(i, i + CONCURRENCY);
-          await executeBatch(batch);
+          await Promise.allSettled(batch.map((task) => uploadFile(task.id)));
         }
       }, 0);
     },
-    [uploadFile]
+    [uploadFile, basePath]
   );
 
   const cancelUpload = useCallback((taskId: string) => {
@@ -313,7 +297,6 @@ export function useUploadManager(systemId: string) {
         ),
       }));
 
-      // Use setTimeout to allow state update to complete
       setTimeout(() => uploadFile(taskId), 0);
     },
     [uploadFile]
@@ -350,8 +333,18 @@ export function useUploadManager(systemId: string) {
   };
 }
 
-function uploadToS3(
+function joinPath(base: string, name: string): string {
+  const cleanedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+  if (!cleanedBase || cleanedBase === "/") {
+    return `/${name}`;
+  }
+  return `${cleanedBase}/${name}`;
+}
+
+function uploadToPresignedUrl(
   url: string,
+  method: string,
+  presignedHeaders: Record<string, string> | undefined,
   file: File,
   signal: AbortSignal,
   onProgress: (progress: number) => void
@@ -370,7 +363,7 @@ function uploadToS3(
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
       } else {
-        reject(new Error(`S3 upload failed: ${xhr.statusText}`));
+        reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
       }
     };
 
@@ -381,8 +374,12 @@ function uploadToS3(
       xhr.abort();
     });
 
-    xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.open(method, url);
+    if (presignedHeaders) {
+      for (const [key, value] of Object.entries(presignedHeaders)) {
+        xhr.setRequestHeader(key, value);
+      }
+    }
     xhr.send(file);
   });
 }

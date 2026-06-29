@@ -1,23 +1,26 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useDeleteDrive, useRestoreDrive } from "@/api/hooks";
 import styles from "./power_button.module.css";
 
 interface PowerButtonProps {
-  systemId?: string;
+  driveID?: string;
 }
 
-export default function PowerButton({ systemId }: PowerButtonProps) {
+export default function PowerButton({ driveID }: PowerButtonProps) {
   const router = useRouter();
   const [showDialog, setShowDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const deleteDrive = useDeleteDrive();
+  const restoreDrive = useRestoreDrive();
+
   const handlePowerClick = () => {
     setShowDialog(true);
   };
 
-  // Exit just navigates to main page (logout happens on main page)
   const handleExit = () => {
     router.push("/");
   };
@@ -31,31 +34,27 @@ export default function PowerButton({ systemId }: PowerButtonProps) {
   };
 
   const handleDeleteConfirm = async () => {
-    if (confirmText.toLowerCase() !== "confirm" || !systemId) {
+    if (confirmText.toLowerCase() !== "confirm" || !driveID) {
       return;
     }
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/systems/${systemId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        router.push("/");
-      } else {
-        console.error(
-          "Failed to delete system:",
-          response.status,
-          response.statusText
-        );
-      }
-    } catch (error) {
-      console.error("Failed to delete system:", error);
-    } finally {
+      await deleteDrive.mutateAsync({ driveID });
+      router.push("/");
+    } catch {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
+      setShowDialog(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!driveID) return;
+    try {
+      await restoreDrive.mutateAsync({ driveID });
+      setShowDialog(false);
+    } catch {
       setShowDialog(false);
     }
   };
@@ -96,10 +95,10 @@ export default function PowerButton({ systemId }: PowerButtonProps) {
             aria-labelledby="shutdown-title"
           >
             <div className={styles.dialog_header}>
-              <h2 id="shutdown-title">Shut Down Windows</h2>
+              <h2 id="shutdown-title">Shut Down</h2>
             </div>
             <div className={styles.dialog_content}>
-              <p>What do you want the computer to do?</p>
+              <p>What do you want to do?</p>
             </div>
             <div className={styles.dialog_footer}>
               <button
@@ -117,14 +116,21 @@ export default function PowerButton({ systemId }: PowerButtonProps) {
                 Cancel
               </button>
             </div>
-            {systemId && (
+            {driveID && (
               <div className={styles.delete_section}>
+                <button
+                  className={styles.dialog_button}
+                  onClick={handleRestore}
+                  type="button"
+                >
+                  Restore Drive
+                </button>
                 <button
                   className={styles.delete_button}
                   onClick={handleDeleteClick}
                   type="button"
                 >
-                  Delete System
+                  Delete Drive
                 </button>
               </div>
             )}
@@ -147,11 +153,11 @@ export default function PowerButton({ systemId }: PowerButtonProps) {
             aria-modal="true"
           >
             <div className={styles.dialog_header}>
-              <h2>Delete System</h2>
+              <h2>Delete Drive</h2>
             </div>
             <div className={styles.dialog_content}>
-              <p>This action cannot be undone.</p>
-              <p>Type &quot;confirm&quot; to delete this system:</p>
+              <p>This action will soft-delete the drive. You can restore it later.</p>
+              <p>Type &quot;confirm&quot; to delete this drive:</p>
               <input
                 type="text"
                 value={confirmText}

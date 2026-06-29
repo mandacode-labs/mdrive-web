@@ -11,17 +11,16 @@ export default function Navigator({
   windowKey: string;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
-  // Get system ID from window store
   const windows = useWindowStore((state) => state.windows);
   const currentWindow = windows.find((w) => w.key === windowKey);
-  const systemId = currentWindow?.systemId || "";
+  const driveID = currentWindow?.driveID || "";
 
   return (
     <div className={`flex-center full-size ${styles.container}`}>
       <div className="flex-center full-size">
         <FileContainer
           windowKey={windowKey}
-          systemId={systemId}
+          driveID={driveID}
           path={path}
           setLoading={setLoading}
         />
