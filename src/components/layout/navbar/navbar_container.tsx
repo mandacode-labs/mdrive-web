@@ -6,10 +6,10 @@ import NavbarIcon from "./navbar_icon";
 
 interface NavbarProps {
   windows: AppWindow[];
-  systemId?: string;
+  driveID?: string;
 }
 
-export default function Navbar({ windows, systemId }: NavbarProps) {
+export default function Navbar({ windows, driveID }: NavbarProps) {
   const defaultIcons = useMemo(
     () => [
       { type: WindowType.Navigator, count: 0, fixed: false },
@@ -17,7 +17,6 @@ export default function Navbar({ windows, systemId }: NavbarProps) {
       { type: WindowType.Video, count: 0, fixed: false },
       { type: WindowType.Audio, count: 0, fixed: false },
       { type: WindowType.Uploader, count: 0, fixed: true },
-      { type: WindowType.Trash, count: 0, fixed: true },
       { type: WindowType.Document, count: 0, fixed: false },
     ],
     []
@@ -41,14 +40,14 @@ export default function Navbar({ windows, systemId }: NavbarProps) {
   return (
     <div className={styles.container}>
       <nav className={styles.navbar}>
-        <PowerButton systemId={systemId} />
+        <PowerButton driveID={driveID} />
         {icons.map((icon) => (
           <div key={icon.type} className={styles.icon_container}>
             {(icon.fixed || icon.count > 0) && (
               <NavbarIcon
                 windowType={icon.type}
                 windowCount={icon.count}
-                systemId={systemId}
+                driveID={driveID}
               />
             )}
           </div>

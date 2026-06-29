@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFileInfo } from "@/api/hooks";
+import { useDriveStat } from "@/api/hooks";
 import { getWindowConfig } from "@/config/window";
 import { useEventStore } from "@/store/ui.store";
 import { useWindowStore } from "@/store/window.store";
@@ -54,8 +54,8 @@ export default memo(function Window({ windowKey }: { windowKey: string }) {
   const positionInitializedRef = useRef(false);
 
   // Queries - use custom hook
-  const _fileInfo = useFileInfo(
-    targetWindow?.systemId || "",
+  const _fileInfo = useDriveStat(
+    targetWindow?.driveID || "",
     targetWindow?.targetKey || ""
   );
 

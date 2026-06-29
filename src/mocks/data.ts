@@ -1,383 +1,312 @@
 import { BackendFileType, type FileType } from "@/types/file";
 
-// Mock system data structure
-export interface MockSystem {
+export interface MockDrive {
   id: string;
+  publicID: string;
   name: string;
-  description: string;
-  status: string;
+  description?: string;
+  ownerID: string;
+  rootNodeID: string;
+  deletedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-// Mock systems storage
-export const mockSystems: Map<string, MockSystem> = new Map();
+export interface MockFile {
+  inodeID: string;
+  parentInodeID: string | null;
+  driveID: string;
+  name: string;
+  path: string;
+  type: FileType;
+  mode: number;
+  size: number;
+  ino: string;
+  mtime: string;
+  ctime: string;
+  crtime: string;
+  atime: string;
+  nlink: number;
+  uid: string;
+  gid: string;
+}
 
-// Initialize mock systems
-const initMockSystems = () => {
-  mockSystems.clear();
-  mockSystems.set("sys-mock-123", {
-    id: "sys-mock-123",
-    name: "Default System",
-    description: "Mock file system",
-    status: "active",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-};
+const ISO = () => new Date().toISOString();
 
-initMockSystems();
+export const mockDrives: Map<string, MockDrive> = new Map();
+export const mockFiles: Map<string, MockFile> = new Map();
+export const mockInodeToPath: Map<string, string> = new Map();
+export const mockPathToInode: Map<string, string> = new Map();
 
-// Helper functions for systems
-export const getSystem = (systemId: string) => {
-  return mockSystems.get(systemId);
-};
+function uid() {
+  return `mock-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+}
 
-export const deleteSystem = (systemId: string) => {
-  return mockSystems.delete(systemId);
-};
-
-export const listSystems = () => {
-  return Array.from(mockSystems.values());
-};
-
-export const createNewSystem = (name: string, description?: string | null) => {
-  const id = `sys-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-  const now = new Date().toISOString();
-  const newSystem: MockSystem = {
-    id,
+function makeFile(
+  driveID: string,
+  parentInodeID: string | null,
+  parentPath: string,
+  name: string,
+  type: FileType,
+  size = 0
+): MockFile {
+  const isDir = type === BackendFileType.Directory;
+  const path = parentPath === "/" ? `/${name}` : `${parentPath}/${name}`;
+  const inodeID = uid();
+  const now = ISO();
+  const file: MockFile = {
+    inodeID,
+    parentInodeID,
+    driveID,
     name,
-    description: description || "",
-    status: "active",
+    path,
+    type,
+    mode: isDir ? 0o040755 : 0o100644,
+    size,
+    ino: inodeID,
+    mtime: now,
+    ctime: now,
+    crtime: now,
+    atime: now,
+    nlink: 1,
+    uid: "1000",
+    gid: "1000",
+  };
+  mockFiles.set(inodeID, file);
+  mockInodeToPath.set(inodeID, path);
+  mockPathToInode.set(`${driveID}::${path}`, inodeID);
+  return file;
+}
+
+function initSampleDrive(driveID: string, name: string): MockDrive {
+  const rootInodeID = uid();
+  const now = ISO();
+  const drive: MockDrive = {
+    id: driveID,
+    publicID: driveID,
+    name,
+    description: "Sample drive",
+    ownerID: "user-123",
+    rootNodeID: rootInodeID,
     createdAt: now,
     updatedAt: now,
   };
-  mockSystems.set(id, newSystem);
-  return newSystem;
-};
+  mockDrives.set(driveID, drive);
 
-// Mock file data structure
-export interface MockFile {
-  fileKey: string;
-  fileName: string;
-  type: FileType;
-  createDate: string;
-  updateDate: string;
-  byteSize: number;
-  parentKey: string | null;
-  path: string;
-}
+  // Root directory
+  const root = makeFile(driveID, null, "", "root", BackendFileType.Directory);
+  mockFiles.delete(rootInodeID);
+  mockFiles.set(rootInodeID, { ...root, inodeID: rootInodeID, path: "/" });
+  mockInodeToPath.set(rootInodeID, "/");
+  mockPathToInode.set(`${driveID}::/`, rootInodeID);
 
-// Root keys
-export const ROOT_KEY = "mock-root-key";
-export const HOME_KEY = "mock-home-key";
-export const TRASH_KEY = "mock-trash-key";
-
-// Path to fileKey mapping
-const pathToKeyMap = new Map<string, string>();
-
-// Generate mock files
-const createMockFile = (
-  fileName: string,
-  type: FileType,
-  parentKey: string | null,
-  byteSize = 0,
-  path: string,
-  overrideFileKey?: string // Allow overriding the generated fileKey
-): MockFile => ({
-  fileKey:
-    overrideFileKey ||
-    `mock-${fileName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-  fileName,
-  type,
-  createDate: new Date().toISOString(),
-  updateDate: new Date().toISOString(),
-  byteSize,
-  parentKey,
-  path,
-});
-
-// Initial mock file system
-export const mockFiles: Map<string, MockFile> = new Map();
-
-// Initialize mock file system
-const initMockFiles = () => {
-  pathToKeyMap.clear();
-
-  // Root container - use ROOT_KEY as fileKey
-  const root = createMockFile(
-    "root",
-    BackendFileType.Directory,
-    null,
-    0,
-    "/",
-    ROOT_KEY
-  );
-  mockFiles.set(ROOT_KEY, root);
-  pathToKeyMap.set("/", ROOT_KEY);
-
-  // Home container - use HOME_KEY as fileKey
-  const home = createMockFile(
-    "home",
-    BackendFileType.Directory,
-    ROOT_KEY,
-    0,
+  // Sample structure under /home
+  makeFile(driveID, rootInodeID, "/", "home", BackendFileType.Directory);
+  makeFile(driveID, rootInodeID, "/home", "Documents", BackendFileType.Directory);
+  makeFile(driveID, rootInodeID, "/home", "Pictures", BackendFileType.Directory);
+  makeFile(driveID, rootInodeID, "/home", "Music", BackendFileType.Directory);
+  makeFile(
+    driveID,
+    rootInodeID,
     "/home",
-    HOME_KEY
-  );
-  mockFiles.set(HOME_KEY, home);
-  pathToKeyMap.set("/home", HOME_KEY);
-
-  // Trash container - use TRASH_KEY as fileKey
-  const trash = createMockFile(
-    ".trash",
-    BackendFileType.Directory,
-    HOME_KEY,
-    0,
-    "/home/.trash",
-    TRASH_KEY
-  );
-  mockFiles.set(TRASH_KEY, trash);
-  pathToKeyMap.set("/home/.trash", TRASH_KEY);
-
-  // Sample folders in home
-  const documents = createMockFile(
-    "Documents",
-    BackendFileType.Directory,
-    HOME_KEY,
-    0,
-    "/home/Documents"
-  );
-  mockFiles.set(documents.fileKey, documents);
-  pathToKeyMap.set("/home/Documents", documents.fileKey);
-
-  const pictures = createMockFile(
-    "Pictures",
-    BackendFileType.Directory,
-    HOME_KEY,
-    0,
-    "/home/Pictures"
-  );
-  mockFiles.set(pictures.fileKey, pictures);
-  pathToKeyMap.set("/home/Pictures", pictures.fileKey);
-
-  const music = createMockFile(
-    "Music",
-    BackendFileType.Directory,
-    HOME_KEY,
-    0,
-    "/home/Music"
-  );
-  mockFiles.set(music.fileKey, music);
-  pathToKeyMap.set("/home/Music", music.fileKey);
-
-  // Sample files
-  const readme = createMockFile(
     "README.md",
     BackendFileType.Regular,
-    HOME_KEY,
-    1024,
-    "/home/README.md"
+    1024
   );
-  mockFiles.set(readme.fileKey, readme);
-  pathToKeyMap.set("/home/README.md", readme.fileKey);
-
-  const image = createMockFile(
-    "sample-image.png",
+  makeFile(
+    driveID,
+    rootInodeID,
+    "/home/Pictures",
+    "sample.png",
     BackendFileType.Regular,
-    pictures.fileKey,
-    2048576,
-    "/home/Pictures/sample-image.png"
+    2048
   );
-  mockFiles.set(image.fileKey, image);
-  pathToKeyMap.set("/home/Pictures/sample-image.png", image.fileKey);
-
-  const video = createMockFile(
-    "sample-video.mp4",
-    BackendFileType.Object,
-    HOME_KEY,
-    10485760,
-    "/home/sample-video.mp4"
-  );
-  mockFiles.set(video.fileKey, video);
-  pathToKeyMap.set("/home/sample-video.mp4", video.fileKey);
-
-  const audio = createMockFile(
-    "sample-audio.mp3",
+  makeFile(
+    driveID,
+    rootInodeID,
+    "/home/Music",
+    "song.mp3",
     BackendFileType.Regular,
-    music.fileKey,
-    5242880,
-    "/home/Music/sample-audio.mp3"
+    4096
   );
-  mockFiles.set(audio.fileKey, audio);
-  pathToKeyMap.set("/home/Music/sample-audio.mp3", audio.fileKey);
 
-  // Object type files (external storage objects)
-  const objImage = createMockFile(
-    "photo.jpg",
-    BackendFileType.Object,
-    pictures.fileKey,
-    153600,
-    "/home/Pictures/photo.jpg"
-  );
-  mockFiles.set(objImage.fileKey, objImage);
-  pathToKeyMap.set("/home/Pictures/photo.jpg", objImage.fileKey);
-
-  // Uppercase extension test file
-  const uppercaseJpg = createMockFile(
-    "test.JPG",
-    BackendFileType.Regular,
-    pictures.fileKey,
-    204800,
-    "/home/Pictures/test.JPG"
-  );
-  mockFiles.set(uppercaseJpg.fileKey, uppercaseJpg);
-  pathToKeyMap.set("/home/Pictures/test.JPG", uppercaseJpg.fileKey);
-
-  const objDocument = createMockFile(
-    "notes.txt",
-    BackendFileType.Object,
-    HOME_KEY,
-    256,
-    "/home/notes.txt"
-  );
-  mockFiles.set(objDocument.fileKey, objDocument);
-  pathToKeyMap.set("/home/notes.txt", objDocument.fileKey);
-};
-
-// Initialize mock file system
-initMockFiles();
-
-// Re-initialize on hot reload in development
-if (typeof window !== "undefined") {
-  const win = window as typeof window & {
-    $mswRegistry?: unknown;
-    $reinitMockFiles?: () => void;
-  };
-  if (win.$mswRegistry) {
-    const originalInit = initMockFiles;
-    win.$reinitMockFiles = () => {
-      mockFiles.clear();
-      pathToKeyMap.clear();
-      originalInit();
-    };
-  }
+  return drive;
 }
 
-// Helper functions
-export const getChildren = (parentKey: string) => {
-  return Array.from(mockFiles.values()).filter(
-    (file) => file.parentKey === parentKey
+initSampleDrive("drv-mock-001", "Personal");
+initSampleDrive("drv-mock-002", "Work");
+
+export function listDrives(includeDeleted = false): MockDrive[] {
+  return Array.from(mockDrives.values()).filter((d) =>
+    includeDeleted ? true : !d.deletedAt
   );
-};
+}
 
-export const getFile = (fileKey: string) => {
-  return mockFiles.get(fileKey);
-};
+export function getDriveByID(driveID: string): MockDrive | undefined {
+  return mockDrives.get(driveID);
+}
 
-// Get file by path
-export const getFileByPath = (path: string) => {
-  const fileKey = pathToKeyMap.get(path);
-  if (fileKey) {
-    return mockFiles.get(fileKey);
-  }
-  return null;
-};
+export function createDrive(name: string, description?: string): MockDrive {
+  const id = `drv-${uid()}`;
+  const now = ISO();
+  const rootInodeID = uid();
+  const drive: MockDrive = {
+    id,
+    publicID: id,
+    name,
+    description,
+    ownerID: "user-123",
+    rootNodeID: rootInodeID,
+    createdAt: now,
+    updatedAt: now,
+  };
+  mockDrives.set(id, drive);
+  mockFiles.set(rootInodeID, {
+    inodeID: rootInodeID,
+    parentInodeID: null,
+    driveID: id,
+    name: "root",
+    path: "/",
+    type: BackendFileType.Directory,
+    mode: 0o040755,
+    size: 0,
+    ino: rootInodeID,
+    mtime: now,
+    ctime: now,
+    crtime: now,
+    atime: now,
+    nlink: 1,
+    uid: "1000",
+    gid: "1000",
+  });
+  mockPathToInode.set(`${id}::/`, rootInodeID);
+  mockInodeToPath.set(rootInodeID, "/");
+  return drive;
+}
 
-// Get path from fileKey
-export const getPathFromFileKey = (fileKey: string) => {
-  const file = mockFiles.get(fileKey);
-  return file?.path || null;
-};
+export function softDeleteDrive(driveID: string): boolean {
+  const drive = mockDrives.get(driveID);
+  if (!drive) return false;
+  drive.deletedAt = ISO();
+  drive.updatedAt = drive.deletedAt;
+  return true;
+}
 
-export const createFile = (
-  parentKey: string,
-  fileName: string,
-  type: FileType
-) => {
-  const parent = mockFiles.get(parentKey);
+export function restoreDrive(driveID: string): boolean {
+  const drive = mockDrives.get(driveID);
+  if (!drive?.deletedAt) return false;
+  drive.deletedAt = undefined;
+  drive.updatedAt = ISO();
+  return true;
+}
+
+export function resolveByPath(driveID: string, path: string): MockFile | null {
+  const inodeID = mockPathToInode.get(`${driveID}::${path}`);
+  if (!inodeID) return null;
+  return mockFiles.get(inodeID) ?? null;
+}
+
+export function listChildren(driveID: string, path: string): MockFile[] {
+  const parent = resolveByPath(driveID, path);
+  if (!parent) return [];
+  return Array.from(mockFiles.values()).filter(
+    (f) => f.driveID === driveID && f.parentInodeID === parent.inodeID
+  );
+}
+
+export function mkdir(driveID: string, path: string): MockFile | null {
+  if (resolveByPath(driveID, path)) return null;
+  const lastSlash = path.lastIndexOf("/");
+  const parentPath = lastSlash > 0 ? path.slice(0, lastSlash) : "/";
+  const name = path.slice(lastSlash + 1);
+  const parent = resolveByPath(driveID, parentPath);
   if (!parent) return null;
+  return makeFile(driveID, parent.inodeID, parentPath, name, BackendFileType.Directory);
+}
 
-  const newPath = `${parent.path === "/" ? "" : parent.path}/${fileName}`;
-  const newFile = createMockFile(fileName, type, parentKey, 0, newPath);
-  mockFiles.set(newFile.fileKey, newFile);
-  pathToKeyMap.set(newPath, newFile.fileKey);
-  return newFile;
-};
-
-export const deleteFile = (fileKey: string) => {
-  const file = mockFiles.get(fileKey);
-  if (file) {
-    // Also delete all children
-    const children = getChildren(fileKey);
-    children.forEach((child) => void deleteFile(child.fileKey));
-
-    pathToKeyMap.delete(file.path);
-    mockFiles.delete(fileKey);
-    return file;
+export function touch(driveID: string, path: string): MockFile | null {
+  const existing = resolveByPath(driveID, path);
+  if (existing) {
+    existing.mtime = ISO();
+    existing.atime = existing.mtime;
+    return existing;
   }
-  return null;
-};
+  const lastSlash = path.lastIndexOf("/");
+  const parentPath = lastSlash > 0 ? path.slice(0, lastSlash) : "/";
+  const name = path.slice(lastSlash + 1);
+  const parent = resolveByPath(driveID, parentPath);
+  if (!parent) return null;
+  return makeFile(driveID, parent.inodeID, parentPath, name, BackendFileType.Regular, 0);
+}
 
-export const updateFileName = (fileKey: string, newName: string) => {
-  const file = mockFiles.get(fileKey);
-  if (file) {
-    const oldPath = file.path;
-    const parentPath = oldPath.substring(0, oldPath.lastIndexOf("/")) || "/";
-    const newPath = `${parentPath === "/" ? "" : parentPath}/${newName}`;
+export function rmRecursive(driveID: string, paths: string[]): string[] {
+  const removed: string[] = [];
+  for (const path of paths) {
+    const file = resolveByPath(driveID, path);
+    if (!file) continue;
+    const toDelete = [file.inodeID];
+    const queue = [file.inodeID];
+    while (queue.length > 0) {
+      const inode = queue.shift();
+      if (!inode) continue;
+      for (const child of mockFiles.values()) {
+        if (child.driveID === driveID && child.parentInodeID === inode) {
+          toDelete.push(child.inodeID);
+          queue.push(child.inodeID);
+        }
+      }
+    }
+    for (const inode of toDelete) {
+      const f = mockFiles.get(inode);
+      if (f) {
+        mockPathToInode.delete(`${driveID}::${f.path}`);
+        mockInodeToPath.delete(inode);
+        mockFiles.delete(inode);
+        removed.push(f.path);
+      }
+    }
+  }
+  return removed;
+}
 
-    // Remove old path mapping
-    pathToKeyMap.delete(oldPath);
+export function mv(
+  driveID: string,
+  sources: string[],
+  destination: string
+): string[] {
+  const moved: string[] = [];
+  const destFile = resolveByPath(driveID, destination);
+  const destIsDir = destFile && destFile.type === BackendFileType.Directory;
 
-    file.fileName = newName;
+  for (const src of sources) {
+    const file = resolveByPath(driveID, src);
+    if (!file) continue;
+
+    let newPath: string;
+    if (destIsDir) {
+      newPath =
+        destination === "/" ? `/${file.name}` : `${destination}/${file.name}`;
+    } else {
+      // destination is a new path (rename)
+      newPath = destination;
+    }
+
+    // Update file path and parent
+    mockPathToInode.delete(`${driveID}::${file.path}`);
     file.path = newPath;
-    file.updateDate = new Date().toISOString();
-
-    // Add new path mapping
-    pathToKeyMap.set(newPath, fileKey);
-
-    return file;
+    file.name = newPath.split("/").pop() ?? file.name;
+    if (destIsDir && destFile) {
+      file.parentInodeID = destFile.inodeID;
+    } else {
+      const lastSlash = newPath.lastIndexOf("/");
+      const parentPath = lastSlash > 0 ? newPath.slice(0, lastSlash) : "/";
+      const parent = resolveByPath(driveID, parentPath);
+      if (parent) file.parentInodeID = parent.inodeID;
+    }
+    file.mtime = ISO();
+    mockPathToInode.set(`${driveID}::${newPath}`, file.inodeID);
+    mockInodeToPath.set(file.inodeID, newPath);
+    moved.push(newPath);
   }
-  return null;
-};
-
-export const updateFileParent = (fileKey: string, newParentKey: string) => {
-  const file = mockFiles.get(fileKey);
-  const newParent = mockFiles.get(newParentKey);
-  if (file && newParent) {
-    const oldPath = file.path;
-    const newPath = `${newParent.path === "/" ? "" : newParent.path}/${file.fileName}`;
-
-    // Remove old path mapping
-    pathToKeyMap.delete(oldPath);
-
-    file.parentKey = newParentKey;
-    file.path = newPath;
-    file.updateDate = new Date().toISOString();
-
-    // Add new path mapping
-    pathToKeyMap.set(newPath, fileKey);
-
-    return file;
-  }
-  return null;
-};
-
-export const moveToTrash = (fileKey: string) => {
-  const file = mockFiles.get(fileKey);
-  if (file) {
-    const oldPath = file.path;
-    const trashName = `trash-${Date.now()}`;
-    const newPath = `/home/.trash/${trashName}`;
-
-    pathToKeyMap.delete(oldPath);
-
-    file.parentKey = TRASH_KEY;
-    file.path = newPath;
-    file.updateDate = new Date().toISOString();
-
-    pathToKeyMap.set(newPath, fileKey);
-    return file;
-  }
-  return null;
-};
+  return moved;
+}

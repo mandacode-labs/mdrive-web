@@ -3,9 +3,6 @@ import { XPImageIcons } from "@/components/icons/xp_image_icons";
 import { FileIconType } from "@/types/file";
 import styles from "./file_icon.module.css";
 
-/**
- * Get the image icon component based on file extension
- */
 function getImageIcon(fileName: string) {
   const ext = fileName.split(".").pop()?.toLowerCase();
   switch (ext) {
@@ -24,9 +21,6 @@ function getImageIcon(fileName: string) {
   }
 }
 
-/**
- * File icon component
- */
 export default memo(
   forwardRef(function FileIcon(
     {
@@ -80,8 +74,6 @@ export default memo(
           {icon === FileIconType.Regular && <XPImageIcons.File />}
           {icon === FileIconType.Object && <XPImageIcons.File />}
           {icon === FileIconType.Home && <XPImageIcons.Home />}
-          {icon === FileIconType.Trash &&
-            (hasContent ? <XPImageIcons.TrashFull /> : <XPImageIcons.Trash />)}
           {icon === FileIconType.Upload && <XPImageIcons.Upload />}
           {icon === FileIconType.Image &&
             (fileName ? getImageIcon(fileName) : <XPImageIcons.Media />)}

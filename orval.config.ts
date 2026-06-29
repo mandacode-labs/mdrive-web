@@ -10,7 +10,7 @@ export default defineConfig({
       baseUrl: "/api",
     },
     input: {
-      target: "https://api.retrowin.mandacode.com/openapi.json",
+      target: "https://api.mdrive.mandacode.com/openapi.json",
     },
   },
 });

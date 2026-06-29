@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMoveFiles } from "@/api/hooks";
+import { useMv } from "@/api/hooks";
 import { useFileStore } from "@/store/file.store";
 import { useEventStore } from "@/store/ui.store";
 import { useWindowStore } from "@/store/window.store";
@@ -14,17 +14,14 @@ export default function DragFileContainer({
 }: {
   children: React.ReactNode;
 }) {
-  // States
   const [start, setStart] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggingReady, setIsDraggingReady] = useState(false);
   const [displayDraggingElements, setDisplayDraggingElements] = useState(false);
   const [pointerMoved, setPointerMoved] = useState(false);
 
-  // Refs
   const draggingFileRef = useRef<HTMLDivElement>(null);
 
-  // Store states
   const currentWindow = useWindowStore((state) => state.currentWindow);
   const menuRef = useFileStore((state) => state.menuRef);
   const highlightedFile = useFileStore((state) => state.highlightedFile);
@@ -34,16 +31,13 @@ export default function DragFileContainer({
   const fileIconRefs = useFileStore((state) => state.fileIconRefs);
   const pressedKeys = useEventStore((state) => state.pressedKeys);
 
-  // Store actions
   const findWindow = useWindowStore((state) => state.findWindow);
   const isFileKeySelected = useFileStore((state) => state.isFileKeySelected);
   const selectFile = useFileStore((state) => state.selectFile);
   const unselectAllFiles = useFileStore((state) => state.unselectAllFiles);
 
-  // Mutations
-  const mvMutation = useMoveFiles();
+  const mvMutation = useMv();
 
-  // Drag file start
   const dragFileStart = useCallback(
     (e: MouseEvent) => {
       if (menuRef?.current?.contains(e.target as Node)) return;
@@ -72,7 +66,6 @@ export default function DragFileContainer({
     ]
   );
 
-  // Create dragging file clone
   const createDraggingFile = useCallback(
     (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -126,7 +119,6 @@ export default function DragFileContainer({
     ]
   );
 
-  // Drag file
   const dragFile = useCallback(
     (e: MouseEvent) => {
       if (!isDragging) return;
@@ -138,12 +130,7 @@ export default function DragFileContainer({
     [isDragging]
   );
 
-  // Drag file end
   const dragFileEnd = useCallback(async () => {
-    console.log("[DragFileContainer] dragFileEnd called", {
-      isDragging,
-      pointerMoved,
-    });
     setIsDragging(false);
     setIsDraggingReady(false);
     setDisplayDraggingElements(false);
@@ -153,7 +140,6 @@ export default function DragFileContainer({
     document.body.style.cursor = "default";
     let targetPath: string | null = null;
 
-    // Set target path as the current window key
     if (currentWindow?.windowRef.current) {
       const window = findWindow(currentWindow.key);
       if (
@@ -165,33 +151,25 @@ export default function DragFileContainer({
       }
     }
 
-    // Set the target folder path as the highlighted file path
     if (highlightedFile && isDragTarget(highlightedFile.type)) {
       targetPath = highlightedFile.fileKey;
-    } else if (
-      highlightedFile &&
-      highlightedFile.type === BackendFileType.Symlink
-    ) {
+    } else if (highlightedFile?.type === BackendFileType.Symlink) {
       targetPath = null;
     } else if (highlightedFile) {
       targetPath = null;
     }
 
-    // Move the selected elements to the target folder
     if (targetPath && pointerMoved) {
-      // Get the file paths of the selected files
       const filePaths = selectedFileSerials
         .map((serialKey) => parseSerialKey(serialKey).fileKey)
         .filter((p) => p !== targetPath);
 
       if (filePaths.length > 0) {
-        // Get system ID
         const window = findWindow(currentWindow?.key || "");
-        const systemId = window?.systemId || "";
+        const driveID = window?.driveID || "";
 
-        // Use batch mv API to move all files at once
         await mvMutation.mutateAsync({
-          systemId,
+          driveID,
           data: { sources: filePaths, destination: targetPath },
         });
       }
@@ -206,10 +184,8 @@ export default function DragFileContainer({
     selectedFileSerials,
     unselectAllFiles,
     mvMutation,
-    isDragging,
   ]);
 
-  // Event listeners
   useEffect(() => {
     document.addEventListener("mousedown", dragFileStart);
     return () => {

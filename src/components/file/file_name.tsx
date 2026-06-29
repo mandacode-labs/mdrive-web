@@ -1,18 +1,10 @@
 import { memo, useEffect, useRef, useState } from "react";
-import { useRenameFile } from "@/api/hooks";
+import { useRename } from "@/api/hooks";
 import { useFileStore } from "@/store/file.store";
 import { useWindowStore } from "@/store/window.store";
 import { parseSerialKey } from "@/utils/serial_key";
 import styles from "./file_name.module.css";
 
-/**
- * File name component
- * @param name - name of the file
- * @param fileKey - key of the file (path in new API)
- * @param windowKey - key of the window
- * @param backgroundFile - is background file
- * @returns - File name component
- */
 export default memo(function FileName({
   name,
   fileKey,
@@ -24,27 +16,20 @@ export default memo(function FileName({
   windowKey: string;
   backgroundFile?: boolean;
 }) {
-  // States
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(name);
 
-  // Refs
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Store state
   const renamingFileSerial = useFileStore((state) => state.renamingFileSerial);
-  // Store actions
   const setRenamingFile = useFileStore((state) => state.setRenamingFile);
 
-  // Get system ID from window store
   const windows = useWindowStore((state) => state.windows);
   const currentWindow = windows.find((w) => w.key === windowKey);
-  const systemId = currentWindow?.systemId || "";
+  const driveID = currentWindow?.driveID || "";
 
-  // Mutations
-  const renameMutation = useRenameFile();
+  const renameMutation = useRename();
 
-  // Update file name via API
   const updateFileName = async () => {
     if (!newName.trim() || newName === name) {
       setIsRenaming(false);
@@ -54,15 +39,11 @@ export default memo(function FileName({
 
     try {
       await renameMutation.mutateAsync({
-        systemId,
-        data: {
-          path: fileKey,
-          newName: newName.trim(),
-        },
+        driveID,
+        path: fileKey,
+        newName: newName.trim(),
       });
-    } catch (error) {
-      console.error("[FileName] Rename failed:", error);
-      // Reset to original name on error
+    } catch {
       setNewName(name);
     }
 
@@ -70,7 +51,6 @@ export default memo(function FileName({
     setRenamingFile(null);
   };
 
-  // Set isRenaming state when the file is the renaming file
   useEffect(() => {
     if (renamingFileSerial) {
       const { fileKey: renamingFileKey, windowKey: renamingWindowKey } =
@@ -83,7 +63,6 @@ export default memo(function FileName({
     }
   }, [fileKey, renamingFileSerial, windowKey]);
 
-  // Focus and select all text when renaming starts
   useEffect(() => {
     if (isRenaming && inputRef.current) {
       inputRef.current.focus();

@@ -14,12 +14,6 @@ const windowConfigs: Record<WindowType, WindowConfig> = {
     supportsSelection: true,
     supportsDragTarget: true,
   },
-  [WindowType.Trash]: {
-    defaultSize: { width: 600, height: 300 },
-    supportsHistory: true,
-    supportsSelection: true,
-    supportsDragTarget: true,
-  },
   [WindowType.Image]: {
     defaultSize: { width: 600, height: 300 },
     supportsHistory: false,
@@ -45,7 +39,7 @@ const windowConfigs: Record<WindowType, WindowConfig> = {
     supportsDragTarget: false,
   },
   [WindowType.Uploader]: {
-    defaultSize: { width: 800, height: 400 },
+    defaultSize: { width: 600, height: 340 },
     supportsHistory: false,
     supportsSelection: false,
     supportsDragTarget: false,

@@ -1,26 +1,29 @@
+import type { DirEntry } from "@/api/generated/model";
 import type { FileType } from "@/types/file";
 import { BackendFileType, FileIconType, VirtualFileType } from "@/types/file";
 import { WindowType } from "@/types/window";
 import { ContentTypes, getContentTypes } from "@/utils/content_type";
 
 /**
- * Convert API d_type number to FileType
+ * Convert a DirEntry.type string (e.g. "directory", "regular") to a FileType.
  */
-export function getFileType(dType: number): FileType {
-  switch (dType) {
-    case 4: // DT_DIR
+export function getFileTypeFromEntry(entry: DirEntry): FileType {
+  switch (entry.type) {
+    case BackendFileType.Directory:
       return BackendFileType.Directory;
-    case 10: // DT_LNK
+    case BackendFileType.Symlink:
       return BackendFileType.Symlink;
-    case 3: // DT_OBJ
+    case BackendFileType.Object:
       return BackendFileType.Object;
+    case BackendFileType.Regular:
+      return BackendFileType.Regular;
     default:
       return BackendFileType.Regular;
   }
 }
 
 /**
- * Get icon type for a file based on its FileType and optional filename
+ * Get icon type for a file based on its FileType and optional filename.
  */
 export function getIconType(
   fileType: FileType,
@@ -49,18 +52,18 @@ export function getIconType(
         : FileIconType.Regular;
     case VirtualFileType.Home:
       return FileIconType.Home;
-    case VirtualFileType.Trash:
-      return FileIconType.Trash;
     case VirtualFileType.Upload:
       return FileIconType.Upload;
     case VirtualFileType.Root:
       return FileIconType.Directory;
+    default:
+      return FileIconType.Regular;
   }
 }
 
 /**
  * Determine which WindowType to open for a given file.
- * Returns null if the file type has no window (e.g., Regular, Symlink).
+ * Returns null if the file type has no window (e.g., Symlink).
  */
 export function getWindowType(
   fileType: FileType,
@@ -87,27 +90,24 @@ export function getWindowType(
     }
     case VirtualFileType.Upload:
       return WindowType.Uploader;
-    case VirtualFileType.Trash:
-      return WindowType.Trash;
     default:
       return null;
   }
 }
 
 /**
- * Check if a file type can be a drag-and-drop target (files can be moved into it)
+ * Check if a file type can be a drag-and-drop target (files can be moved into it).
  */
 export function isDragTarget(fileType: FileType): boolean {
   return (
     fileType === BackendFileType.Directory ||
     fileType === VirtualFileType.Root ||
-    fileType === VirtualFileType.Home ||
-    fileType === VirtualFileType.Trash
+    fileType === VirtualFileType.Home
   );
 }
 
 /**
- * Check if a file type can be selected via the selection box
+ * Check if a file type can be selected via the selection box.
  */
 export function isSelectable(fileType: FileType): boolean {
   return (

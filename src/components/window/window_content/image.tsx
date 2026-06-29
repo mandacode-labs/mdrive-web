@@ -9,7 +9,7 @@ import {
   MdZoomIn,
   MdZoomOut,
 } from "react-icons/md";
-import { useGetDownloadUrl, useLs } from "@/api/generated";
+import { useLs, usePresignDownload } from "@/api/generated";
 import type { DirEntry } from "@/api/generated/model";
 import { useWindowStore } from "@/store/window.store";
 import { ContentTypes, getContentTypes } from "@/utils/content_type";
@@ -33,18 +33,15 @@ export default function ImageViewer({
   const updateWindow = useWindowStore((state) => state.updateWindow);
   const currentFocusedKey = useWindowStore((state) => state.currentWindow?.key);
   const currentWindow = windows.find((w) => w.key === windowKey);
-  const systemId = currentWindow?.systemId || "";
+  const driveID = currentWindow?.driveID || "";
 
-  // Zoom & rotation state
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  // Pan offset (only active when zoomed)
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
   const panOffset = useRef({ x: 0, y: 0 });
 
-  // Reset zoom/rotation when image changes
   useEffect(() => {
     if (!path) return;
     setZoom(1);
@@ -52,35 +49,35 @@ export default function ImageViewer({
     setPan({ x: 0, y: 0 });
   }, [path]);
 
-  // Derive parent directory
   const dirPath = useMemo(() => {
     const parts = path.split("/");
     parts.pop();
     return parts.join("/") || "/";
   }, [path]);
 
-  // Get directory listing for sibling images
   const dirQuery = useLs(
-    systemId,
+    driveID,
     { path: dirPath },
     {
       query: {
-        select: (data) => (data.status === 200 ? data.data.entries : []),
-        enabled: !!systemId && !!dirPath,
+        select: (data) => (data.status === 200 ? data.data.entries ?? [] : []),
+        enabled: !!driveID && !!dirPath,
       },
       fetch: { credentials: "include" },
     }
   );
 
-  // Filter image files and find current index
   const { imageFiles, currentIndex } = useMemo(() => {
     if (!dirQuery.data)
       return { imageFiles: [] as DirEntry[], currentIndex: -1 };
     const images = (dirQuery.data as DirEntry[])
-      .filter((entry) => getContentTypes(entry.name) === ContentTypes.Image)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter((entry) => {
+        if (!entry.name) return false;
+        return getContentTypes(entry.name) === ContentTypes.Image;
+      })
+      .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
     const idx = images.findIndex(
-      (entry) => `${dirPath === "/" ? "" : dirPath}/${entry.name}` === path
+      (entry) => joinPath(dirPath, entry.name ?? "") === path
     );
     return { imageFiles: images, currentIndex: idx };
   }, [dirQuery.data, dirPath, path]);
@@ -88,13 +85,12 @@ export default function ImageViewer({
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex >= 0 && currentIndex < imageFiles.length - 1;
 
-  // Download URL for current image only
-  const downloadQuery = useGetDownloadUrl(
-    systemId,
+  const downloadQuery = usePresignDownload(
+    driveID,
     { path },
     {
       query: {
-        select: (data) => (data.status === 200 ? data.data.downloadUrl : null),
+        select: (data) => (data.status === 200 ? data.data.url : null),
       },
       fetch: { credentials: "include" },
     }
@@ -103,8 +99,8 @@ export default function ImageViewer({
   const navigateTo = useCallback(
     (index: number) => {
       const target = imageFiles[index];
-      if (!target) return;
-      const newFileKey = `${dirPath === "/" ? "" : dirPath}/${target.name}`;
+      if (!target?.name) return;
+      const newFileKey = joinPath(dirPath, target.name);
       updateWindow({
         targetWindowKey: windowKey,
         targetFileKey: newFileKey,
@@ -139,7 +135,6 @@ export default function ImageViewer({
     setRotation((r) => r + ROTATE_STEP);
   }, []);
 
-  // Mouse wheel zoom
   useEffect(() => {
     const container = document.querySelector(
       `[data-window-key="${windowKey}"]`
@@ -165,7 +160,6 @@ export default function ImageViewer({
     return () => container.removeEventListener("wheel", handleWheel);
   }, [windowKey, currentFocusedKey]);
 
-  // Pan handlers
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (zoom <= 1) return;
@@ -194,7 +188,6 @@ export default function ImageViewer({
   const isFit = zoom === 1;
   const cursor = isFit ? "default" : isPanning.current ? "grabbing" : "grab";
 
-  // Keyboard navigation (only when this window is focused)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (currentFocusedKey !== windowKey) return;
@@ -224,7 +217,6 @@ export default function ImageViewer({
     fitScreen,
   ]);
 
-  // Always use contain as base, scale on top — zoom ratio stays proportional to container
   const needsTransform = zoom !== 1 || rotation !== 0;
   const imageStyle: React.CSSProperties = needsTransform
     ? {
@@ -248,7 +240,7 @@ export default function ImageViewer({
       >
         {downloadQuery.data && (
           <Image
-            src={downloadQuery.data.downloadUrl}
+            src={downloadQuery.data}
             alt={fileName}
             fill
             style={{
@@ -334,4 +326,10 @@ export default function ImageViewer({
       </div>
     </div>
   );
+}
+
+function joinPath(base: string, name: string): string {
+  const cleanedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+  if (!cleanedBase || cleanedBase === "/") return `/${name}`;
+  return `${cleanedBase}/${name}`;
 }

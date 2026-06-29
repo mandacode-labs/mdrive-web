@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MDrive
 
-## Getting Started
+Retro-styled web file manager for the MDrive API — a POSIX-like filesystem
+over S3, authenticated via Zitadel (Google IdP).
 
-First, run the development server:
+## Stack
+
+- **Framework**: Next.js 16 (App Router, Turbopack)
+- **Language**: TypeScript 6
+- **UI**: React 19
+- **Data**: TanStack Query, Zustand
+- **API client**: Orval (regenerated from the OpenAPI spec)
+- **Mocking**: MSW (development only)
+- **Lint / Format**: Biome
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # starts on http://localhost:3000 with MSW mocks
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Point the frontend at a real backend by editing `next.config.mjs`
+(production rewrite) and `orval.config.ts` (regeneration target).
+The rewrite forwards `/api/*` to the configured API host.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command             | Description                                            |
+|---------------------|--------------------------------------------------------|
+| `npm run dev`       | Start the dev server with Turbopack and MSW mocks       |
+| `npm run build`     | Production build (Next.js standalone output)            |
+| `npm run start`     | Run the built app                                       |
+| `npm run lint`      | Run Biome lint                                          |
+| `npm run format`    | Format with Biome                                       |
+| `npm run check`     | Biome check (lint + format rules)                       |
+| `npm run api:gen`   | Regenerate the API client from the OpenAPI spec         |
 
-## Learn More
+## Project layout
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── api/                # HTTP layer
+│   ├── generated/      # Orval output (do not edit by hand)
+│   ├── hooks/          # Domain hooks (useMe, useDrives, useDriveLs, ...)
+│   ├── utils.ts        # ApiError parsing + query-key predicates
+│   └── client.ts       # QueryClient setup
+├── app/                # Next.js App Router pages
+│   ├── page.tsx        # Drive list + OAuth login
+│   ├── login/          # Redirects to /api/auth/google
+│   └── [drive_id]/     # Per-drive workspace (navigator, uploader, viewers)
+├── components/         # Reusable UI (XP-styled)
+├── config/             # Window configuration table
+├── mocks/              # MSW handlers + in-memory store (dev only)
+├── store/              # Zustand stores (window, file, ui)
+├── types/              # Shared types
+└── utils/              # Helpers
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API overview
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The MDrive API is documented via OpenAPI. Regenerate the client whenever
+the backend spec changes:
 
-## Deploy on Vercel
+```bash
+npm run api:gen
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Highlights of the new model:
+- **Drives** (not systems) are the top-level container owned by a user
+- **Files** addressed by POSIX-style paths inside a drive
+- **Auth** is session-cookie based, set by the backend after the Zitadel
+  OAuth callback at `/api/auth/callback`
+- **Uploads** use presigned S3 PUT URLs
+- **Downloads** use presigned S3 GET URLs

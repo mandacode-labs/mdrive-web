@@ -1,5 +1,6 @@
-import { useFileInfo } from "@/api/hooks";
+import { useDriveStat } from "@/api/hooks";
 import { useWindowStore } from "@/store/window.store";
+import { isDirectory, isSymlink } from "@/types/file";
 import styles from "./info.module.css";
 
 function formatBytes(bytes: number): string {
@@ -24,11 +25,11 @@ export default function InfoViewer({
 }) {
   const windows = useWindowStore((state) => state.windows);
   const currentWindow = windows.find((w) => w.targetKey === path);
-  const systemId = currentWindow?.systemId || "";
+  const driveID = currentWindow?.driveID || "";
 
-  const statQuery = useFileInfo(systemId, path);
+  const statQuery = useDriveStat(driveID, path);
 
-  const inode = statQuery.data ?? null;
+  const nodeStat = statQuery.data ?? null;
 
   if (statQuery.isLoading) {
     return (
@@ -38,13 +39,19 @@ export default function InfoViewer({
     );
   }
 
-  if (!inode) {
+  if (!nodeStat) {
     return (
       <div className={`full-size flex-center ${styles.container}`}>
         <span className={styles.error}>File info not available</span>
       </div>
     );
   }
+
+  const fileType = isDirectory(nodeStat.mode)
+    ? "directory"
+    : isSymlink(nodeStat.mode)
+      ? "symlink"
+      : "file";
 
   return (
     <div className={`full-size ${styles.container}`}>
@@ -56,35 +63,37 @@ export default function InfoViewer({
           </tr>
           <tr>
             <td className={styles.label}>size</td>
-            <td className={styles.value}>{formatBytes(inode.size || 0)}</td>
+            <td className={styles.value}>{formatBytes(nodeStat.size ?? 0)}</td>
           </tr>
           <tr>
             <td className={styles.label}>type</td>
-            <td className={styles.value}>
-              {(inode.mode ?? 0) & 0o040000 ? "directory" : "file"}
-            </td>
+            <td className={styles.value}>{fileType}</td>
           </tr>
           <tr>
             <td className={styles.label}>mode</td>
             <td className={styles.value}>
-              {(inode.mode ?? 0).toString(8).padStart(4, "0")}
+              {(nodeStat.mode ?? 0).toString(8).padStart(4, "0")}
             </td>
           </tr>
           <tr>
             <td className={styles.label}>uid</td>
-            <td className={styles.value}>{inode.uid}</td>
+            <td className={styles.value}>{nodeStat.uid ?? "-"}</td>
           </tr>
           <tr>
             <td className={styles.label}>gid</td>
-            <td className={styles.value}>{inode.gid}</td>
+            <td className={styles.value}>{nodeStat.gid ?? "-"}</td>
+          </tr>
+          <tr>
+            <td className={styles.label}>inode</td>
+            <td className={styles.value}>{nodeStat.ino ?? "-"}</td>
           </tr>
           <tr>
             <td className={styles.label}>created</td>
-            <td className={styles.value}>{formatDate(inode.createdAt)}</td>
+            <td className={styles.value}>{formatDate(nodeStat.crtime)}</td>
           </tr>
           <tr>
             <td className={styles.label}>modified</td>
-            <td className={styles.value}>{formatDate(inode.mtime)}</td>
+            <td className={styles.value}>{formatDate(nodeStat.mtime)}</td>
           </tr>
         </tbody>
       </table>

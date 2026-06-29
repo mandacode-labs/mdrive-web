@@ -9,7 +9,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "https://api.retrowin.mandacode.com/:path*",
+        destination: "https://api.mdrive.mandacode.com/:path*",
       },
     ];
   },
