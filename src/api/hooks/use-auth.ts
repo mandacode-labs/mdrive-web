@@ -91,13 +91,13 @@ export function useRestoreDrive() {
 }
 
 /**
- * Triggers the backend Zitadel login flow. Top-level GET navigation
+ * Triggers the backend OIDC login flow. Top-level GET navigation
  * (so SameSite=Lax cookies travel across the OAuth redirect chain).
  *
- * The `redirect_uri` query parameter is what zitadel-go encrypts into
- * state and redirects to after the callback. Default `"/"` resolves to
- * the SPA root. Pass a deep-link path (e.g. `"/drv-mock-001"`) to come
- * back to a specific page after login.
+ * The `redirect_uri` query parameter is what the auth Service encrypts
+ * into state and redirects to after the callback. Default `"/"` resolves
+ * to the SPA root. Pass a deep-link path (e.g. `"/drv-mock-001"`) to
+ * come back to a specific page after login.
  */
 export function login(redirectTo: string = "/") {
   const url = new URL(authUrl("/auth/login"));
