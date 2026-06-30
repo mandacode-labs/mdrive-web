@@ -118,7 +118,7 @@ export default function SystemSelectionPage() {
             <div className={styles.login_section}>
               <button
                 className={styles.login_button}
-                onClick={login}
+                onClick={() => login()}
                 type="button"
               >
                 <svg
