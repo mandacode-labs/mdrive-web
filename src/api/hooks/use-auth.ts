@@ -25,6 +25,20 @@ function authUrl(path: string): string {
   return `${base}${path}`;
 }
 
+/**
+ * SPA origin. Used to construct absolute `redirect_uri` query values for
+ * the auth flow. The backend chart validates these against an allowlist
+ * (post_login_url + allowed_origins) and falls back to a safe default if
+ * the value is missing or rejected — so an empty or wrong value here is
+ * not a security issue, just a UX fallback.
+ */
+const SPA_ORIGIN =
+  process.env.NEXT_PUBLIC_SPA_ORIGIN ?? "https://mdrive.mandacode.com";
+
+function redirectToAbsolute(redirectTo: string): string {
+  return new URL(redirectTo, SPA_ORIGIN).toString();
+}
+
 export function useMe() {
   return useQuery({
     ...getAuthMeQueryOptions(),
@@ -79,9 +93,18 @@ export function useRestoreDrive() {
 /**
  * Triggers the backend Zitadel login flow. Top-level GET navigation
  * (so SameSite=Lax cookies travel across the OAuth redirect chain).
+ *
+ * The `redirect_uri` query parameter is what zitadel-go encrypts into
+ * state and redirects to after the callback. Default `"/"` resolves to
+ * the SPA root. Pass a deep-link path (e.g. `"/drv-mock-001"`) to come
+ * back to a specific page after login.
  */
-export function login() {
-  window.location.href = authUrl("/auth/login");
+export function login(redirectTo: string = "/") {
+  const url = new URL(authUrl("/auth/login"));
+  if (redirectTo !== "/") {
+    url.searchParams.set("redirect_uri", redirectToAbsolute(redirectTo));
+  }
+  window.location.href = url.toString();
 }
 
 /**
