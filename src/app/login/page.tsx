@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { getAuthLoginUrl } from "@/api/generated";
 
-// Sends the browser to the backend's OIDC login entry point. The backend's
-// AuthPassthrough middleware then runs the Zitadel choreography and
-// redirects back with the session cookie.
+const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE ?? "";
+
+function authUrl(path: string): string {
+  if (!AUTH_BASE) return `/api${path}`;
+  return `${AUTH_BASE}${path}`;
+}
+
 export default function LoginPage() {
   useEffect(() => {
-    window.location.href = getAuthLoginUrl();
+    window.location.href = authUrl("/auth/login");
   }, []);
 
   return (

@@ -1,14 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import type { User } from "@/api/generated/model";
 import {
-  getAuthLoginUrl,
-  getAuthLogoutMutationOptions,
   getAuthMeQueryOptions,
   getCreateDriveMutationOptions,
-  getDeleteDriveMutationOptions,
   getListDrivesQueryOptions,
+  getDeleteDriveMutationOptions,
   getRestoreDriveMutationOptions,
 } from "@/api/generated";
+
+/**
+ * Backend auth URL. In production we hit the API origin directly so the
+ * auth cookies (state, session) are set against the response's own origin —
+ * proxying the Set-Cookie through the Next.js rewrite would attribute the
+ * cookie to `mdrive.mandacode.com` and trip the browser's domain check.
+ *
+ * Set NEXT_PUBLIC_AUTH_BASE in `.env.production` (e.g.
+ * `https://api.mdrive.mandacode.com`). In dev it is empty so the path stays
+ * relative and MSW intercepts it.
+ */
+function authUrl(path: string): string {
+  const base = process.env.NEXT_PUBLIC_AUTH_BASE ?? "";
+  if (!base) return `/api${path}`;
+  return `${base}${path}`;
+}
 
 export function useMe() {
   return useQuery({
@@ -62,28 +77,26 @@ export function useRestoreDrive() {
 }
 
 /**
- * Triggers the backend Zitadel login flow. The browser is redirected to
- * `/api/auth/login`, which Next.js rewrites to the backend in production.
- * The backend's AuthPassthrough middleware then handles the Zitadel OIDC
- * choreography and redirects back with the session cookie set.
+ * Triggers the backend Zitadel login flow. Top-level GET navigation
+ * (so SameSite=Lax cookies travel across the OAuth redirect chain).
  */
 export function login() {
-  window.location.href = getAuthLoginUrl();
+  window.location.href = authUrl("/auth/login");
 }
 
 /**
- * Calls the backend `/auth/logout` endpoint, clears the local query cache,
- * and reloads. The backend removes the `mdrive_session` cookie as part of
- * the response.
+ * Submits a POST to the backend's `/auth/logout` via a hidden form so the
+ * cookie clearing and 302 redirect to the post-logout URL all happen in one
+ * top-level navigation. No fetch + JSON dance — that would lose cookies
+ * with the proxy in the middle.
  */
 export function useLogout() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...getAuthLogoutMutationOptions(),
-    onSuccess: () => {
-      queryClient.removeQueries();
-      window.location.reload();
-    },
-  });
+  return useCallback(() => {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = authUrl("/auth/logout");
+    form.style.display = "none";
+    document.body.appendChild(form);
+    form.submit();
+  }, []);
 }
