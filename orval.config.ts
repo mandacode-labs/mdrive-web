@@ -1,5 +1,7 @@
 import { defineConfig } from "orval";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 export default defineConfig({
   api: {
     output: {
@@ -7,7 +9,8 @@ export default defineConfig({
       target: "src/api/generated/index.ts",
       schemas: "src/api/generated/model",
       client: "react-query",
-      baseUrl: "/api",
+      baseUrl: API_BASE,
+      mock: { generators: [{ type: "msw" }] },
     },
     input: {
       target: "https://api.mdrive.mandacode.com/openapi.json",
