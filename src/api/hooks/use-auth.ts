@@ -9,35 +9,17 @@ import {
   getRestoreDriveMutationOptions,
 } from "@/api/generated";
 
-/**
- * Backend auth URL. In production we hit the API origin directly so the
- * auth cookies (state, session) are set against the response's own origin —
- * proxying the Set-Cookie through the Next.js rewrite would attribute the
- * cookie to `mdrive.mandacode.com` and trip the browser's domain check.
- *
- * Set NEXT_PUBLIC_AUTH_BASE in `.env.production` (e.g.
- * `https://api.mdrive.mandacode.com`). In dev it is empty so the path stays
- * relative and MSW intercepts it.
- */
-function authUrl(path: string): string {
-  const base = process.env.NEXT_PUBLIC_AUTH_BASE ?? "";
-  if (!base) return `/api${path}`;
-  return `${base}${path}`;
-}
+// Auth flow hits the API origin directly so Set-Cookie's Domain
+// matches the response origin. NEXT_PUBLIC_AUTH_BASE is the API origin
+// (e.g. https://api.mdrive.mandacode.com); in dev it's empty so the
+// relative path goes to MSW.
+const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE ?? "";
+const authUrl = (path: string) =>
+  AUTH_BASE ? `${AUTH_BASE}${path}` : `/api${path}`;
 
-/**
- * SPA origin. Used to construct absolute `redirect_uri` query values for
- * the auth flow. The backend chart validates these against an allowlist
- * (post_login_url + allowed_origins) and falls back to a safe default if
- * the value is missing or rejected — so an empty or wrong value here is
- * not a security issue, just a UX fallback.
- */
+// NEXT_PUBLIC_SPA_ORIGIN is what the chart's allowlist compares against.
 const SPA_ORIGIN =
   process.env.NEXT_PUBLIC_SPA_ORIGIN ?? "https://mdrive.mandacode.com";
-
-function redirectToAbsolute(redirectTo: string): string {
-  return new URL(redirectTo, SPA_ORIGIN).toString();
-}
 
 export function useMe() {
   return useQuery({
@@ -59,7 +41,6 @@ export function useDrives(enabled: boolean) {
 
 export function useCreateDrive() {
   const queryClient = useQueryClient();
-
   return useMutation({
     ...getCreateDriveMutationOptions(),
     onSuccess: () => {
@@ -70,7 +51,6 @@ export function useCreateDrive() {
 
 export function useDeleteDrive() {
   const queryClient = useQueryClient();
-
   return useMutation({
     ...getDeleteDriveMutationOptions(),
     onSuccess: () => {
@@ -81,7 +61,6 @@ export function useDeleteDrive() {
 
 export function useRestoreDrive() {
   const queryClient = useQueryClient();
-
   return useMutation({
     ...getRestoreDriveMutationOptions(),
     onSuccess: () => {
@@ -90,29 +69,19 @@ export function useRestoreDrive() {
   });
 }
 
-/**
- * Triggers the backend OIDC login flow. Top-level GET navigation
- * (so SameSite=Lax cookies travel across the OAuth redirect chain).
- *
- * The `redirect_uri` query parameter is what the auth Service encrypts
- * into state and redirects to after the callback. Default `"/"` resolves
- * to the SPA root. Pass a deep-link path (e.g. `"/drv-mock-001"`) to
- * come back to a specific page after login.
- */
+// Top-level navigation so SameSite=Lax cookies travel through the
+// OIDC redirect chain. `redirect_uri` is what the auth Service
+// encrypts into state and redirects to after the callback.
 export function login(redirectTo: string = "/") {
   const url = new URL(authUrl("/auth/login"));
   if (redirectTo !== "/") {
-    url.searchParams.set("redirect_uri", redirectToAbsolute(redirectTo));
+    url.searchParams.set("redirect_uri", new URL(redirectTo, SPA_ORIGIN).toString());
   }
   window.location.href = url.toString();
 }
 
-/**
- * Submits a POST to the backend's `/auth/logout` via a hidden form so the
- * cookie clearing and 302 redirect to the post-logout URL all happen in one
- * top-level navigation. No fetch + JSON dance — that would lose cookies
- * with the proxy in the middle.
- */
+// Form POST (not fetch) so the cookie clearing and post-logout 302
+// both happen in one top-level navigation.
 export function useLogout() {
   return useCallback(() => {
     const form = document.createElement("form");

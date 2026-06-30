@@ -1,17 +1,6 @@
-/**
- * Global fetch interceptor for SPA-side request diagnostics.
- *
- * In production, when an API call fails (4xx/5xx, network error) the only
- * signal an operator has is the browser's Network tab. Logging the request
- * shape (method, url, status, body) to `console.error` makes the same
- * information visible in the devtools console without losing the redirect
- * chain context that a deep-linked session might carry.
- *
- * The interceptor is dev/prod-agnostic: MSW and the data API both go
- * through `window.fetch`, so we see both. Failures from MSW (404 path
- * mismatch, missing handler) are just as informative as backend 500s.
- */
-
+// Logs failed API requests to the devtools console so operators
+// can see request shape (method, url, status, body) without
+// digging through the Network tab. Idempotent.
 let installed = false;
 
 export function installApiDebug(): void {
@@ -19,9 +8,9 @@ export function installApiDebug(): void {
   if (typeof window === "undefined") return;
   installed = true;
 
-  const originalFetch = window.fetch.bind(window);
+  const original = window.fetch.bind(window);
 
-  window.fetch = async function instrumentedFetch(
+  window.fetch = async function instrumented(
     input: RequestInfo | URL,
     init?: RequestInit
   ): Promise<Response> {
@@ -29,29 +18,33 @@ export function installApiDebug(): void {
     const url = typeof input === "string" ? input : input.toString();
 
     try {
-      const response = await originalFetch(input, init);
-
+      const response = await original(input, init);
       if (response.status >= 400) {
-        const contentType = response.headers.get("content-type") ?? "";
-        const body =
-          contentType.includes("application/json")
-            ? await response.clone().text().catch(() => "<unread>")
-            : await response
-                .clone()
-                .text()
-                .then((t) => (t.length > 200 ? `${t.slice(0, 200)}…` : t))
-                .catch(() => "<unread>");
-
+        const raw = await response.clone().text().catch(() => "");
         console.error(
-          `[api] ${response.status} ${method} ${url}`,
-          "\n  body:", body
+          `[api] ${response.status} ${method} ${url}\n  body: ${preview(raw, response.headers.get("content-type"))}`
         );
       }
-
       return response;
     } catch (error) {
       console.error(`[api] network error ${method} ${url}`, error);
       throw error;
     }
   };
+}
+
+const PREVIEW_LIMIT = 500;
+
+function preview(raw: string, contentType: string | null): string {
+  if (raw.length === 0) return "<empty>";
+  const truncated =
+    raw.length > PREVIEW_LIMIT ? `${raw.slice(0, PREVIEW_LIMIT)}…` : raw;
+  if (contentType?.includes("application/json")) {
+    try {
+      return JSON.stringify(JSON.parse(truncated), null, 2);
+    } catch {
+      return truncated;
+    }
+  }
+  return truncated;
 }
