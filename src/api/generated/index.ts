@@ -110,7 +110,7 @@ export const getHealthUrl = () => {
 
 
 
-  return `/api/health`
+  return `/health`
 }
 
 /**
@@ -141,7 +141,7 @@ export const health = async ( options?: RequestInit): Promise<healthResponse> =>
 
 export const getHealthQueryKey = () => {
     return [
-    `/api/health`
+    `/health`
     ] as const;
     }
 
@@ -258,7 +258,7 @@ export const getCreateDriveUrl = () => {
 
 
 
-  return `/api/v1/drives`
+  return `/v1/drives`
 }
 
 /**
@@ -360,7 +360,7 @@ export const getListDrivesUrl = () => {
 
 
 
-  return `/api/v1/drives`
+  return `/v1/drives`
 }
 
 /**
@@ -391,7 +391,7 @@ export const listDrives = async ( options?: RequestInit): Promise<listDrivesResp
 
 export const getListDrivesQueryKey = () => {
     return [
-    `/api/v1/drives`
+    `/v1/drives`
     ] as const;
     }
 
@@ -503,7 +503,7 @@ export const getGetDriveUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/root`
+  return `/v1/drives/${driveID}/root`
 }
 
 /**
@@ -534,7 +534,7 @@ export const getDrive = async (driveID: string, options?: RequestInit): Promise<
 
 export const getGetDriveQueryKey = (driveID: string,) => {
     return [
-    `/api/v1/drives/${driveID}/root`
+    `/v1/drives/${driveID}/root`
     ] as const;
     }
 
@@ -651,7 +651,7 @@ export const getUpdateDriveUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/root`
+  return `/v1/drives/${driveID}/root`
 }
 
 /**
@@ -769,7 +769,7 @@ export const getDeleteDriveUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/root`
+  return `/v1/drives/${driveID}/root`
 }
 
 /**
@@ -886,7 +886,7 @@ export const getRestoreDriveUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/restore`
+  return `/v1/drives/${driveID}/restore`
 }
 
 /**
@@ -993,7 +993,7 @@ export const getListDeletedDrivesUrl = () => {
 
 
 
-  return `/api/v1/admin/drives/deleted`
+  return `/v1/admin/drives/deleted`
 }
 
 /**
@@ -1024,7 +1024,7 @@ export const listDeletedDrives = async ( options?: RequestInit): Promise<listDel
 
 export const getListDeletedDrivesQueryKey = () => {
     return [
-    `/api/v1/admin/drives/deleted`
+    `/v1/admin/drives/deleted`
     ] as const;
     }
 
@@ -1136,7 +1136,7 @@ export const getGetDriveStorageUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/storage`
+  return `/v1/drives/${driveID}/storage`
 }
 
 /**
@@ -1167,7 +1167,7 @@ export const getDriveStorage = async (driveID: string, options?: RequestInit): P
 
 export const getGetDriveStorageQueryKey = (driveID: string,) => {
     return [
-    `/api/v1/drives/${driveID}/storage`
+    `/v1/drives/${driveID}/storage`
     ] as const;
     }
 
@@ -1294,7 +1294,7 @@ export const getMkdirUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs/mkdir`
+  return `/v1/drives/${driveID}/fs/mkdir`
 }
 
 /**
@@ -1422,7 +1422,7 @@ export const getTouchUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs/touch`
+  return `/v1/drives/${driveID}/fs/touch`
 }
 
 /**
@@ -1550,7 +1550,7 @@ export const getRmUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs`
+  return `/v1/drives/${driveID}/fs`
 }
 
 /**
@@ -1678,7 +1678,7 @@ export const getMvUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs/mv`
+  return `/v1/drives/${driveID}/fs/mv`
 }
 
 /**
@@ -1809,7 +1809,7 @@ export const getLsUrl = (driveID: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/drives/${driveID}/fs/ls?${stringifiedParams}` : `/api/v1/drives/${driveID}/fs/ls`
+  return stringifiedParams.length > 0 ? `/v1/drives/${driveID}/fs/ls?${stringifiedParams}` : `/v1/drives/${driveID}/fs/ls`
 }
 
 /**
@@ -1842,7 +1842,7 @@ export const ls = async (driveID: string,
 export const getLsQueryKey = (driveID: string,
     params?: LsParams,) => {
     return [
-    `/api/v1/drives/${driveID}/fs/ls`, ...(params ? [params] : [])
+    `/v1/drives/${driveID}/fs/ls`, ...(params ? [params] : [])
     ] as const;
     }
 
@@ -1977,7 +1977,7 @@ export const getCatUrl = (driveID: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/drives/${driveID}/fs/cat?${stringifiedParams}` : `/api/v1/drives/${driveID}/fs/cat`
+  return stringifiedParams.length > 0 ? `/v1/drives/${driveID}/fs/cat?${stringifiedParams}` : `/v1/drives/${driveID}/fs/cat`
 }
 
 /**
@@ -2010,7 +2010,7 @@ export const cat = async (driveID: string,
 export const getCatQueryKey = (driveID: string,
     params?: CatParams,) => {
     return [
-    `/api/v1/drives/${driveID}/fs/cat`, ...(params ? [params] : [])
+    `/v1/drives/${driveID}/fs/cat`, ...(params ? [params] : [])
     ] as const;
     }
 
@@ -2142,7 +2142,7 @@ export const getWriteUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs/write`
+  return `/v1/drives/${driveID}/fs/write`
 }
 
 /**
@@ -2270,7 +2270,7 @@ export const getSymlinkUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs/symlink`
+  return `/v1/drives/${driveID}/fs/symlink`
 }
 
 /**
@@ -2398,7 +2398,7 @@ export const getHardlinkUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs/hardlink`
+  return `/v1/drives/${driveID}/fs/hardlink`
 }
 
 /**
@@ -2526,7 +2526,7 @@ export const getMountUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs/mount`
+  return `/v1/drives/${driveID}/fs/mount`
 }
 
 /**
@@ -2662,7 +2662,7 @@ export const getUnmountUrl = (driveID: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/drives/${driveID}/fs/unmount?${stringifiedParams}` : `/api/v1/drives/${driveID}/fs/unmount`
+  return stringifiedParams.length > 0 ? `/v1/drives/${driveID}/fs/unmount?${stringifiedParams}` : `/v1/drives/${driveID}/fs/unmount`
 }
 
 /**
@@ -2793,7 +2793,7 @@ export const getStatUrl = (driveID: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/drives/${driveID}/fs/stat?${stringifiedParams}` : `/api/v1/drives/${driveID}/fs/stat`
+  return stringifiedParams.length > 0 ? `/v1/drives/${driveID}/fs/stat?${stringifiedParams}` : `/v1/drives/${driveID}/fs/stat`
 }
 
 /**
@@ -2826,7 +2826,7 @@ export const stat = async (driveID: string,
 export const getStatQueryKey = (driveID: string,
     params?: StatParams,) => {
     return [
-    `/api/v1/drives/${driveID}/fs/stat`, ...(params ? [params] : [])
+    `/v1/drives/${driveID}/fs/stat`, ...(params ? [params] : [])
     ] as const;
     }
 
@@ -2961,7 +2961,7 @@ export const getLstatUrl = (driveID: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/drives/${driveID}/fs/lstat?${stringifiedParams}` : `/api/v1/drives/${driveID}/fs/lstat`
+  return stringifiedParams.length > 0 ? `/v1/drives/${driveID}/fs/lstat?${stringifiedParams}` : `/v1/drives/${driveID}/fs/lstat`
 }
 
 /**
@@ -2994,7 +2994,7 @@ export const lstat = async (driveID: string,
 export const getLstatQueryKey = (driveID: string,
     params?: LstatParams,) => {
     return [
-    `/api/v1/drives/${driveID}/fs/lstat`, ...(params ? [params] : [])
+    `/v1/drives/${driveID}/fs/lstat`, ...(params ? [params] : [])
     ] as const;
     }
 
@@ -3129,7 +3129,7 @@ export const getReadlinkUrl = (driveID: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/drives/${driveID}/fs/readlink?${stringifiedParams}` : `/api/v1/drives/${driveID}/fs/readlink`
+  return stringifiedParams.length > 0 ? `/v1/drives/${driveID}/fs/readlink?${stringifiedParams}` : `/v1/drives/${driveID}/fs/readlink`
 }
 
 /**
@@ -3162,7 +3162,7 @@ export const readlink = async (driveID: string,
 export const getReadlinkQueryKey = (driveID: string,
     params?: ReadlinkParams,) => {
     return [
-    `/api/v1/drives/${driveID}/fs/readlink`, ...(params ? [params] : [])
+    `/v1/drives/${driveID}/fs/readlink`, ...(params ? [params] : [])
     ] as const;
     }
 
@@ -3297,7 +3297,7 @@ export const getRealpathUrl = (driveID: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/drives/${driveID}/fs/realpath?${stringifiedParams}` : `/api/v1/drives/${driveID}/fs/realpath`
+  return stringifiedParams.length > 0 ? `/v1/drives/${driveID}/fs/realpath?${stringifiedParams}` : `/v1/drives/${driveID}/fs/realpath`
 }
 
 /**
@@ -3330,7 +3330,7 @@ export const realpath = async (driveID: string,
 export const getRealpathQueryKey = (driveID: string,
     params?: RealpathParams,) => {
     return [
-    `/api/v1/drives/${driveID}/fs/realpath`, ...(params ? [params] : [])
+    `/v1/drives/${driveID}/fs/realpath`, ...(params ? [params] : [])
     ] as const;
     }
 
@@ -3462,7 +3462,7 @@ export const getWriteLargeUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/fs/object`
+  return `/v1/drives/${driveID}/fs/object`
 }
 
 /**
@@ -3580,7 +3580,7 @@ export const getInitiateUploadUrl = (driveID: string,) => {
 
 
 
-  return `/api/v1/drives/${driveID}/uploads`
+  return `/v1/drives/${driveID}/uploads`
 }
 
 /**
@@ -3704,7 +3704,7 @@ export const getCompleteUploadUrl = (driveID: string,
 
 
 
-  return `/api/v1/drives/${driveID}/uploads/${uploadId}/complete`
+  return `/v1/drives/${driveID}/uploads/${uploadId}/complete`
 }
 
 /**
@@ -3831,7 +3831,7 @@ export const getPresignDownloadUrl = (driveID: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/v1/drives/${driveID}/downloads?${stringifiedParams}` : `/api/v1/drives/${driveID}/downloads`
+  return stringifiedParams.length > 0 ? `/v1/drives/${driveID}/downloads?${stringifiedParams}` : `/v1/drives/${driveID}/downloads`
 }
 
 /**
@@ -3864,7 +3864,7 @@ export const presignDownload = async (driveID: string,
 export const getPresignDownloadQueryKey = (driveID: string,
     params?: PresignDownloadParams,) => {
     return [
-    `/api/v1/drives/${driveID}/downloads`, ...(params ? [params] : [])
+    `/v1/drives/${driveID}/downloads`, ...(params ? [params] : [])
     ] as const;
     }
 
@@ -3976,7 +3976,7 @@ export const getGetUserUrl = () => {
 
 
 
-  return `/api/v1/users`
+  return `/v1/users`
 }
 
 /**
@@ -4007,7 +4007,7 @@ export const getUser = async ( options?: RequestInit): Promise<getUserResponse> 
 
 export const getGetUserQueryKey = () => {
     return [
-    `/api/v1/users`
+    `/v1/users`
     ] as const;
     }
 
@@ -4114,7 +4114,7 @@ export const getUpsertUserUrl = () => {
 
 
 
-  return `/api/v1/users`
+  return `/v1/users`
 }
 
 /**
@@ -4209,7 +4209,7 @@ export const getAuthLoginUrl = () => {
 
 
 
-  return `/api/auth/login`
+  return `/auth/login`
 }
 
 /**
@@ -4243,7 +4243,7 @@ export const authLogin = async ( options?: RequestInit): Promise<authLoginRespon
 
 export const getAuthLoginQueryKey = () => {
     return [
-    `/api/auth/login`
+    `/auth/login`
     ] as const;
     }
 
@@ -4345,7 +4345,7 @@ export const getAuthCallbackUrl = (params: AuthCallbackParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/auth/callback?${stringifiedParams}` : `/api/auth/callback`
+  return stringifiedParams.length > 0 ? `/auth/callback?${stringifiedParams}` : `/auth/callback`
 }
 
 /**
@@ -4380,7 +4380,7 @@ export const authCallback = async (params: AuthCallbackParams, options?: Request
 
 export const getAuthCallbackQueryKey = (params?: AuthCallbackParams,) => {
     return [
-    `/api/auth/callback`, ...(params ? [params] : [])
+    `/auth/callback`, ...(params ? [params] : [])
     ] as const;
     }
 
@@ -4475,7 +4475,7 @@ export const getAuthLogoutUrl = () => {
 
 
 
-  return `/api/auth/logout`
+  return `/auth/logout`
 }
 
 /**
@@ -4579,7 +4579,7 @@ export const getAuthMeUrl = () => {
 
 
 
-  return `/api/auth/me`
+  return `/auth/me`
 }
 
 /**
@@ -4610,7 +4610,7 @@ export const authMe = async ( options?: RequestInit): Promise<authMeResponse> =>
 
 export const getAuthMeQueryKey = () => {
     return [
-    `/api/auth/me`
+    `/auth/me`
     ] as const;
     }
 

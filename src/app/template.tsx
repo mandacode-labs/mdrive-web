@@ -4,13 +4,13 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Suspense, useEffect, useState } from "react";
 import { queryClient } from "@/api/client";
 import { startMockService } from "@/mocks";
-import { installApiDebug } from "@/lib/api-debug";
+import { installFetchCredentials } from "@/lib/fetch-credentials";
 
 export default function Template({ children }: { children: React.ReactNode }) {
   const [mswReady, setMswReady] = useState(false);
 
   useEffect(() => {
-    installApiDebug();
+    installFetchCredentials();
 
     if (process.env.NODE_ENV === "development") {
       startMockService()

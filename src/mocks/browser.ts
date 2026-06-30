@@ -1,18 +1,13 @@
 import { setupWorker } from "msw/browser";
 
-import { handlers } from "./handlers";
+import { getMdriveAPIMock } from "@/api/generated/index.msw";
 
-export const worker = setupWorker(...handlers);
+const worker = setupWorker(...getMdriveAPIMock());
 
-// Ensure worker starts only once
 let workerStarted = false;
 
 export async function startWorker() {
-  if (workerStarted) {
-    return;
-  }
+  if (workerStarted) return;
   workerStarted = true;
-  await worker.start({
-    onUnhandledRequest: "bypass",
-  });
+  await worker.start({ onUnhandledRequest: "bypass" });
 }

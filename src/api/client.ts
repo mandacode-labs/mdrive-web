@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,4 +17,21 @@ export const queryClient = new QueryClient({
       retry: 1,
     },
   },
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      const path = Array.isArray(query.queryKey)
+        ? String(query.queryKey[0])
+        : "unknown";
+      const status =
+        error instanceof Response
+          ? error.status
+          : (error as { status?: number })?.status;
+      console.error(`[api] ${status ?? "error"} ${path}`, error);
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      console.error("[api] mutation error", error);
+    },
+  }),
 });
