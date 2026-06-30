@@ -25,16 +25,16 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AuthCallbackParams,
+  BadRequestResponse,
   CatParams,
+  ConflictResponse,
   DirContent,
   DownloadResponse,
   Drive,
   DriveCreate,
   DriveUpdate,
   Error,
-  GoogleNativeLogin200,
-  GoogleNativeLoginBody,
+  ForbiddenResponse,
   HardlinkBody,
   Health200,
   LsParams,
@@ -43,6 +43,7 @@ import type {
   MountBody,
   MvBody,
   NodeStat,
+  NotFoundResponse,
   PresignDownloadParams,
   PresignRequest,
   PresignResponse,
@@ -51,11 +52,14 @@ import type {
   Realpath200,
   RealpathParams,
   RmBody,
+  ServiceUnavailableResponse,
   StatParams,
   StorageConfig,
   SymlinkBody,
   TouchBody,
+  UnauthorizedResponse,
   UnmountParams,
+  UnprocessableEntityResponse,
   UploadCompleteRequest,
   UploadCompleteResponse,
   UpsertUserBody,
@@ -81,12 +85,24 @@ export type healthResponse200 = {
   status: 200
 }
 
+export type healthResponse503 = {
+  data: ServiceUnavailableResponse
+  status: 503
+}
+
+export type healthResponseDefault = {
+  data: Error
+  status: Exclude<HTTPStatusCodes, 200 | 503>
+}
+
 export type healthResponseSuccess = (healthResponse200) & {
   headers: Headers;
 };
-;
+export type healthResponseError = (healthResponse503 | healthResponseDefault) & {
+  headers: Headers;
+};
 
-export type healthResponse = (healthResponseSuccess)
+export type healthResponse = (healthResponseSuccess | healthResponseError)
 
 export const getHealthUrl = () => {
 
@@ -97,6 +113,7 @@ export const getHealthUrl = () => {
 }
 
 /**
+ * Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
  * @summary Health check
  */
 export const health = async ( options?: RequestInit): Promise<healthResponse> => {
@@ -128,7 +145,7 @@ export const getHealthQueryKey = () => {
     }
 
 
-export const getHealthQueryOptions = <TData = Awaited<ReturnType<typeof health>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>>, fetch?: RequestInit}
+export const getHealthQueryOptions = <TData = Awaited<ReturnType<typeof health>>, TError = ServiceUnavailableResponse | Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
@@ -147,10 +164,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type HealthQueryResult = NonNullable<Awaited<ReturnType<typeof health>>>
-export type HealthQueryError = unknown
+export type HealthQueryError = ServiceUnavailableResponse | Error
 
 
-export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = unknown>(
+export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ServiceUnavailableResponse | Error>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof health>>,
@@ -160,7 +177,7 @@ export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = u
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = unknown>(
+export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ServiceUnavailableResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof health>>,
@@ -170,7 +187,7 @@ export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = u
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = unknown>(
+export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ServiceUnavailableResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -178,7 +195,7 @@ export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = u
  * @summary Health check
  */
 
-export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = unknown>(
+export function useHealth<TData = Awaited<ReturnType<typeof health>>, TError = ServiceUnavailableResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof health>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -201,15 +218,35 @@ export type createDriveResponse200 = {
   status: 200
 }
 
+export type createDriveResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type createDriveResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type createDriveResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type createDriveResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
 export type createDriveResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 409>
 }
 
 export type createDriveResponseSuccess = (createDriveResponse200) & {
   headers: Headers;
 };
-export type createDriveResponseError = (createDriveResponseDefault) & {
+export type createDriveResponseError = (createDriveResponse400 | createDriveResponse401 | createDriveResponse403 | createDriveResponse409 | createDriveResponseDefault) & {
   headers: Headers;
 };
 
@@ -224,6 +261,7 @@ export const getCreateDriveUrl = () => {
 }
 
 /**
+ * Create a new drive owned by the authenticated user with the given storage configuration.
  * @summary Create a new drive
  */
 export const createDrive = async (driveCreate?: DriveCreate, options?: RequestInit): Promise<createDriveResponse> => {
@@ -247,7 +285,7 @@ export const createDrive = async (driveCreate?: DriveCreate, options?: RequestIn
 
 
 
-export const getCreateDriveMutationOptions = <TError = Error,
+export const getCreateDriveMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDrive>>, TError,{data?: DriveCreate}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof createDrive>>, TError,{data?: DriveCreate}, TContext> => {
 
@@ -276,12 +314,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type CreateDriveMutationResult = NonNullable<Awaited<ReturnType<typeof createDrive>>>
     export type CreateDriveMutationBody = DriveCreate | undefined
-    export type CreateDriveMutationError = Error
+    export type CreateDriveMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | Error
 
     /**
  * @summary Create a new drive
  */
-export const useCreateDrive = <TError = Error,
+export const useCreateDrive = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDrive>>, TError,{data?: DriveCreate}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createDrive>>,
@@ -297,15 +335,20 @@ export type listDrivesResponse200 = {
   status: 200
 }
 
+export type listDrivesResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
 export type listDrivesResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 401>
 }
 
 export type listDrivesResponseSuccess = (listDrivesResponse200) & {
   headers: Headers;
 };
-export type listDrivesResponseError = (listDrivesResponseDefault) & {
+export type listDrivesResponseError = (listDrivesResponse401 | listDrivesResponseDefault) & {
   headers: Headers;
 };
 
@@ -320,6 +363,7 @@ export const getListDrivesUrl = () => {
 }
 
 /**
+ * List drives owned by the authenticated user.
  * @summary List drives owned by the authenticated user
  */
 export const listDrives = async ( options?: RequestInit): Promise<listDrivesResponse> => {
@@ -351,7 +395,7 @@ export const getListDrivesQueryKey = () => {
     }
 
 
-export const getListDrivesQueryOptions = <TData = Awaited<ReturnType<typeof listDrives>>, TError = Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDrives>>, TError, TData>>, fetch?: RequestInit}
+export const getListDrivesQueryOptions = <TData = Awaited<ReturnType<typeof listDrives>>, TError = UnauthorizedResponse | Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDrives>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
@@ -370,10 +414,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type ListDrivesQueryResult = NonNullable<Awaited<ReturnType<typeof listDrives>>>
-export type ListDrivesQueryError = Error
+export type ListDrivesQueryError = UnauthorizedResponse | Error
 
 
-export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TError = Error>(
+export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TError = UnauthorizedResponse | Error>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDrives>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listDrives>>,
@@ -383,7 +427,7 @@ export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TE
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TError = Error>(
+export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TError = UnauthorizedResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDrives>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listDrives>>,
@@ -393,7 +437,7 @@ export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TE
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TError = Error>(
+export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TError = UnauthorizedResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDrives>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -401,7 +445,7 @@ export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TE
  * @summary List drives owned by the authenticated user
  */
 
-export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TError = Error>(
+export function useListDrives<TData = Awaited<ReturnType<typeof listDrives>>, TError = UnauthorizedResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDrives>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -424,15 +468,30 @@ export type getDriveResponse200 = {
   status: 200
 }
 
+export type getDriveResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getDriveResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getDriveResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
 export type getDriveResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 401 | 403 | 404>
 }
 
 export type getDriveResponseSuccess = (getDriveResponse200) & {
   headers: Headers;
 };
-export type getDriveResponseError = (getDriveResponseDefault) & {
+export type getDriveResponseError = (getDriveResponse401 | getDriveResponse403 | getDriveResponse404 | getDriveResponseDefault) & {
   headers: Headers;
 };
 
@@ -447,6 +506,7 @@ export const getGetDriveUrl = (driveID: string,) => {
 }
 
 /**
+ * Return the drive identified by `driveID` (404 if not found or not owned by the caller).
  * @summary Get a drive by ID
  */
 export const getDrive = async (driveID: string, options?: RequestInit): Promise<getDriveResponse> => {
@@ -478,7 +538,7 @@ export const getGetDriveQueryKey = (driveID: string,) => {
     }
 
 
-export const getGetDriveQueryOptions = <TData = Awaited<ReturnType<typeof getDrive>>, TError = Error>(driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDrive>>, TError, TData>>, fetch?: RequestInit}
+export const getGetDriveQueryOptions = <TData = Awaited<ReturnType<typeof getDrive>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDrive>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
@@ -497,10 +557,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type GetDriveQueryResult = NonNullable<Awaited<ReturnType<typeof getDrive>>>
-export type GetDriveQueryError = Error
+export type GetDriveQueryError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error
 
 
-export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError = Error>(
+export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDrive>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getDrive>>,
@@ -510,7 +570,7 @@ export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError = Error>(
+export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDrive>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getDrive>>,
@@ -520,7 +580,7 @@ export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError = Error>(
+export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDrive>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -528,7 +588,7 @@ export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError
  * @summary Get a drive by ID
  */
 
-export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError = Error>(
+export function useGetDrive<TData = Awaited<ReturnType<typeof getDrive>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDrive>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -551,15 +611,35 @@ export type updateDriveResponse200 = {
   status: 200
 }
 
+export type updateDriveResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type updateDriveResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type updateDriveResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type updateDriveResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
 export type updateDriveResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 409>
 }
 
 export type updateDriveResponseSuccess = (updateDriveResponse200) & {
   headers: Headers;
 };
-export type updateDriveResponseError = (updateDriveResponseDefault) & {
+export type updateDriveResponseError = (updateDriveResponse400 | updateDriveResponse401 | updateDriveResponse403 | updateDriveResponse409 | updateDriveResponseDefault) & {
   headers: Headers;
 };
 
@@ -574,6 +654,7 @@ export const getUpdateDriveUrl = (driveID: string,) => {
 }
 
 /**
+ * Update the drive's name and description. Empty fields are left unchanged.
  * @summary Update a drive
  */
 export const updateDrive = async (driveID: string,
@@ -598,7 +679,7 @@ export const updateDrive = async (driveID: string,
 
 
 
-export const getUpdateDriveMutationOptions = <TError = Error,
+export const getUpdateDriveMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDrive>>, TError,{driveID: string;data?: DriveUpdate}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateDrive>>, TError,{driveID: string;data?: DriveUpdate}, TContext> => {
 
@@ -627,12 +708,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type UpdateDriveMutationResult = NonNullable<Awaited<ReturnType<typeof updateDrive>>>
     export type UpdateDriveMutationBody = DriveUpdate | undefined
-    export type UpdateDriveMutationError = Error
+    export type UpdateDriveMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | Error
 
     /**
  * @summary Update a drive
  */
-export const useUpdateDrive = <TError = Error,
+export const useUpdateDrive = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDrive>>, TError,{driveID: string;data?: DriveUpdate}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateDrive>>,
@@ -648,15 +729,35 @@ export type deleteDriveResponse204 = {
   status: 204
 }
 
+export type deleteDriveResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type deleteDriveResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type deleteDriveResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type deleteDriveResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
 export type deleteDriveResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 204>
+  status: Exclude<HTTPStatusCodes, 204 | 400 | 401 | 403 | 404>
 }
 
 export type deleteDriveResponseSuccess = (deleteDriveResponse204) & {
   headers: Headers;
 };
-export type deleteDriveResponseError = (deleteDriveResponseDefault) & {
+export type deleteDriveResponseError = (deleteDriveResponse400 | deleteDriveResponse401 | deleteDriveResponse403 | deleteDriveResponse404 | deleteDriveResponseDefault) & {
   headers: Headers;
 };
 
@@ -671,6 +772,7 @@ export const getDeleteDriveUrl = (driveID: string,) => {
 }
 
 /**
+ * Soft-delete a drive. The row is marked `deleted_at`; an admin can restore it within the retention window.
  * @summary Soft-delete a drive
  */
 export const deleteDrive = async (driveID: string, options?: RequestInit): Promise<deleteDriveResponse> => {
@@ -694,7 +796,7 @@ export const deleteDrive = async (driveID: string, options?: RequestInit): Promi
 
 
 
-export const getDeleteDriveMutationOptions = <TError = Error,
+export const getDeleteDriveMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDrive>>, TError,{driveID: string}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteDrive>>, TError,{driveID: string}, TContext> => {
 
@@ -723,12 +825,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type DeleteDriveMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDrive>>>
 
-    export type DeleteDriveMutationError = Error
+    export type DeleteDriveMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error
 
     /**
  * @summary Soft-delete a drive
  */
-export const useDeleteDrive = <TError = Error,
+export const useDeleteDrive = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDrive>>, TError,{driveID: string}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteDrive>>,
@@ -744,15 +846,35 @@ export type restoreDriveResponse200 = {
   status: 200
 }
 
+export type restoreDriveResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type restoreDriveResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type restoreDriveResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type restoreDriveResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
 export type restoreDriveResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404>
 }
 
 export type restoreDriveResponseSuccess = (restoreDriveResponse200) & {
   headers: Headers;
 };
-export type restoreDriveResponseError = (restoreDriveResponseDefault) & {
+export type restoreDriveResponseError = (restoreDriveResponse400 | restoreDriveResponse401 | restoreDriveResponse403 | restoreDriveResponse404 | restoreDriveResponseDefault) & {
   headers: Headers;
 };
 
@@ -767,6 +889,7 @@ export const getRestoreDriveUrl = (driveID: string,) => {
 }
 
 /**
+ * Restore a soft-deleted drive. Admin only.
  * @summary Restore a soft-deleted drive
  */
 export const restoreDrive = async (driveID: string, options?: RequestInit): Promise<restoreDriveResponse> => {
@@ -790,7 +913,7 @@ export const restoreDrive = async (driveID: string, options?: RequestInit): Prom
 
 
 
-export const getRestoreDriveMutationOptions = <TError = Error,
+export const getRestoreDriveMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDrive>>, TError,{driveID: string}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof restoreDrive>>, TError,{driveID: string}, TContext> => {
 
@@ -819,12 +942,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type RestoreDriveMutationResult = NonNullable<Awaited<ReturnType<typeof restoreDrive>>>
 
-    export type RestoreDriveMutationError = Error
+    export type RestoreDriveMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error
 
     /**
  * @summary Restore a soft-deleted drive
  */
-export const useRestoreDrive = <TError = Error,
+export const useRestoreDrive = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDrive>>, TError,{driveID: string}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof restoreDrive>>,
@@ -840,15 +963,25 @@ export type listDeletedDrivesResponse200 = {
   status: 200
 }
 
+export type listDeletedDrivesResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type listDeletedDrivesResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
 export type listDeletedDrivesResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 401 | 403>
 }
 
 export type listDeletedDrivesResponseSuccess = (listDeletedDrivesResponse200) & {
   headers: Headers;
 };
-export type listDeletedDrivesResponseError = (listDeletedDrivesResponseDefault) & {
+export type listDeletedDrivesResponseError = (listDeletedDrivesResponse401 | listDeletedDrivesResponse403 | listDeletedDrivesResponseDefault) & {
   headers: Headers;
 };
 
@@ -863,6 +996,7 @@ export const getListDeletedDrivesUrl = () => {
 }
 
 /**
+ * List all soft-deleted drives. Admin only.
  * @summary List soft-deleted drives (admin only)
  */
 export const listDeletedDrives = async ( options?: RequestInit): Promise<listDeletedDrivesResponse> => {
@@ -894,7 +1028,7 @@ export const getListDeletedDrivesQueryKey = () => {
     }
 
 
-export const getListDeletedDrivesQueryOptions = <TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletedDrives>>, TError, TData>>, fetch?: RequestInit}
+export const getListDeletedDrivesQueryOptions = <TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = UnauthorizedResponse | ForbiddenResponse | Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletedDrives>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
@@ -913,10 +1047,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type ListDeletedDrivesQueryResult = NonNullable<Awaited<ReturnType<typeof listDeletedDrives>>>
-export type ListDeletedDrivesQueryError = Error
+export type ListDeletedDrivesQueryError = UnauthorizedResponse | ForbiddenResponse | Error
 
 
-export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = Error>(
+export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = UnauthorizedResponse | ForbiddenResponse | Error>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletedDrives>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listDeletedDrives>>,
@@ -926,7 +1060,7 @@ export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDelet
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = Error>(
+export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = UnauthorizedResponse | ForbiddenResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletedDrives>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listDeletedDrives>>,
@@ -936,7 +1070,7 @@ export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDelet
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = Error>(
+export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = UnauthorizedResponse | ForbiddenResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletedDrives>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -944,7 +1078,7 @@ export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDelet
  * @summary List soft-deleted drives (admin only)
  */
 
-export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = Error>(
+export function useListDeletedDrives<TData = Awaited<ReturnType<typeof listDeletedDrives>>, TError = UnauthorizedResponse | ForbiddenResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletedDrives>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -967,15 +1101,30 @@ export type getDriveStorageResponse200 = {
   status: 200
 }
 
+export type getDriveStorageResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getDriveStorageResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getDriveStorageResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
 export type getDriveStorageResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 401 | 403 | 404>
 }
 
 export type getDriveStorageResponseSuccess = (getDriveStorageResponse200) & {
   headers: Headers;
 };
-export type getDriveStorageResponseError = (getDriveStorageResponseDefault) & {
+export type getDriveStorageResponseError = (getDriveStorageResponse401 | getDriveStorageResponse403 | getDriveStorageResponse404 | getDriveStorageResponseDefault) & {
   headers: Headers;
 };
 
@@ -990,6 +1139,7 @@ export const getGetDriveStorageUrl = (driveID: string,) => {
 }
 
 /**
+ * Return the storage configuration for the drive.
  * @summary Get a drive's storage configuration
  */
 export const getDriveStorage = async (driveID: string, options?: RequestInit): Promise<getDriveStorageResponse> => {
@@ -1021,7 +1171,7 @@ export const getGetDriveStorageQueryKey = (driveID: string,) => {
     }
 
 
-export const getGetDriveStorageQueryOptions = <TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = Error>(driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDriveStorage>>, TError, TData>>, fetch?: RequestInit}
+export const getGetDriveStorageQueryOptions = <TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDriveStorage>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
@@ -1040,10 +1190,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type GetDriveStorageQueryResult = NonNullable<Awaited<ReturnType<typeof getDriveStorage>>>
-export type GetDriveStorageQueryError = Error
+export type GetDriveStorageQueryError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error
 
 
-export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = Error>(
+export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDriveStorage>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getDriveStorage>>,
@@ -1053,7 +1203,7 @@ export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveSto
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = Error>(
+export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDriveStorage>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getDriveStorage>>,
@@ -1063,7 +1213,7 @@ export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveSto
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = Error>(
+export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDriveStorage>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -1071,7 +1221,7 @@ export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveSto
  * @summary Get a drive's storage configuration
  */
 
-export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = Error>(
+export function useGetDriveStorage<TData = Awaited<ReturnType<typeof getDriveStorage>>, TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDriveStorage>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -1094,15 +1244,45 @@ export type mkdirResponse200 = {
   status: 200
 }
 
+export type mkdirResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type mkdirResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type mkdirResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type mkdirResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type mkdirResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type mkdirResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type mkdirResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type mkdirResponseSuccess = (mkdirResponse200) & {
   headers: Headers;
 };
-export type mkdirResponseError = (mkdirResponseDefault) & {
+export type mkdirResponseError = (mkdirResponse400 | mkdirResponse401 | mkdirResponse403 | mkdirResponse404 | mkdirResponse409 | mkdirResponse422 | mkdirResponseDefault) & {
   headers: Headers;
 };
 
@@ -1117,6 +1297,7 @@ export const getMkdirUrl = (driveID: string,) => {
 }
 
 /**
+ * Create a directory at `path` in the drive. Returns 409 if `path` already exists.
  * @summary Create a directory (POSIX mkdir(2))
  */
 export const mkdir = async (driveID: string,
@@ -1141,7 +1322,7 @@ export const mkdir = async (driveID: string,
 
 
 
-export const getMkdirMutationOptions = <TError = Error,
+export const getMkdirMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mkdir>>, TError,{driveID: string;data?: MkdirBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof mkdir>>, TError,{driveID: string;data?: MkdirBody}, TContext> => {
 
@@ -1170,12 +1351,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type MkdirMutationResult = NonNullable<Awaited<ReturnType<typeof mkdir>>>
     export type MkdirMutationBody = MkdirBody | undefined
-    export type MkdirMutationError = Error
+    export type MkdirMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Create a directory (POSIX mkdir(2))
  */
-export const useMkdir = <TError = Error,
+export const useMkdir = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mkdir>>, TError,{driveID: string;data?: MkdirBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof mkdir>>,
@@ -1191,15 +1372,45 @@ export type touchResponse200 = {
   status: 200
 }
 
+export type touchResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type touchResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type touchResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type touchResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type touchResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type touchResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type touchResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type touchResponseSuccess = (touchResponse200) & {
   headers: Headers;
 };
-export type touchResponseError = (touchResponseDefault) & {
+export type touchResponseError = (touchResponse400 | touchResponse401 | touchResponse403 | touchResponse404 | touchResponse409 | touchResponse422 | touchResponseDefault) & {
   headers: Headers;
 };
 
@@ -1214,6 +1425,7 @@ export const getTouchUrl = (driveID: string,) => {
 }
 
 /**
+ * Create an empty regular file at `path`, or update its mtime if it exists.
  * @summary Create an empty file (POSIX open(O_CREAT))
  */
 export const touch = async (driveID: string,
@@ -1238,7 +1450,7 @@ export const touch = async (driveID: string,
 
 
 
-export const getTouchMutationOptions = <TError = Error,
+export const getTouchMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof touch>>, TError,{driveID: string;data?: TouchBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof touch>>, TError,{driveID: string;data?: TouchBody}, TContext> => {
 
@@ -1267,12 +1479,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type TouchMutationResult = NonNullable<Awaited<ReturnType<typeof touch>>>
     export type TouchMutationBody = TouchBody | undefined
-    export type TouchMutationError = Error
+    export type TouchMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Create an empty file (POSIX open(O_CREAT))
  */
-export const useTouch = <TError = Error,
+export const useTouch = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof touch>>, TError,{driveID: string;data?: TouchBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof touch>>,
@@ -1288,15 +1500,45 @@ export type rmResponse204 = {
   status: 204
 }
 
+export type rmResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type rmResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type rmResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type rmResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type rmResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type rmResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type rmResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 204>
+  status: Exclude<HTTPStatusCodes, 204 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type rmResponseSuccess = (rmResponse204) & {
   headers: Headers;
 };
-export type rmResponseError = (rmResponseDefault) & {
+export type rmResponseError = (rmResponse400 | rmResponse401 | rmResponse403 | rmResponse404 | rmResponse409 | rmResponse422 | rmResponseDefault) & {
   headers: Headers;
 };
 
@@ -1311,6 +1553,7 @@ export const getRmUrl = (driveID: string,) => {
 }
 
 /**
+ * Remove one or more filesystem entries. With `recursive=true`, removes directories and their contents.
  * @summary Remove files or directories (POSIX unlink/rmdir(2))
  */
 export const rm = async (driveID: string,
@@ -1335,7 +1578,7 @@ export const rm = async (driveID: string,
 
 
 
-export const getRmMutationOptions = <TError = Error,
+export const getRmMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rm>>, TError,{driveID: string;data?: RmBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof rm>>, TError,{driveID: string;data?: RmBody}, TContext> => {
 
@@ -1364,12 +1607,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type RmMutationResult = NonNullable<Awaited<ReturnType<typeof rm>>>
     export type RmMutationBody = RmBody | undefined
-    export type RmMutationError = Error
+    export type RmMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Remove files or directories (POSIX unlink/rmdir(2))
  */
-export const useRm = <TError = Error,
+export const useRm = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rm>>, TError,{driveID: string;data?: RmBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof rm>>,
@@ -1385,15 +1628,45 @@ export type mvResponse200 = {
   status: 200
 }
 
+export type mvResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type mvResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type mvResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type mvResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type mvResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type mvResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type mvResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type mvResponseSuccess = (mvResponse200) & {
   headers: Headers;
 };
-export type mvResponseError = (mvResponseDefault) & {
+export type mvResponseError = (mvResponse400 | mvResponse401 | mvResponse403 | mvResponse404 | mvResponse409 | mvResponse422 | mvResponseDefault) & {
   headers: Headers;
 };
 
@@ -1408,6 +1681,7 @@ export const getMvUrl = (driveID: string,) => {
 }
 
 /**
+ * Move or rename one or more sources to a destination. Source and destination must be on the same drive.
  * @summary Move files or directories (POSIX rename(2))
  */
 export const mv = async (driveID: string,
@@ -1432,7 +1706,7 @@ export const mv = async (driveID: string,
 
 
 
-export const getMvMutationOptions = <TError = Error,
+export const getMvMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mv>>, TError,{driveID: string;data?: MvBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof mv>>, TError,{driveID: string;data?: MvBody}, TContext> => {
 
@@ -1461,12 +1735,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type MvMutationResult = NonNullable<Awaited<ReturnType<typeof mv>>>
     export type MvMutationBody = MvBody | undefined
-    export type MvMutationError = Error
+    export type MvMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Move files or directories (POSIX rename(2))
  */
-export const useMv = <TError = Error,
+export const useMv = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mv>>, TError,{driveID: string;data?: MvBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof mv>>,
@@ -1482,15 +1756,40 @@ export type lsResponse200 = {
   status: 200
 }
 
+export type lsResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type lsResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type lsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type lsResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type lsResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type lsResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 422>
 }
 
 export type lsResponseSuccess = (lsResponse200) & {
   headers: Headers;
 };
-export type lsResponseError = (lsResponseDefault) & {
+export type lsResponseError = (lsResponse400 | lsResponse401 | lsResponse403 | lsResponse404 | lsResponse422 | lsResponseDefault) & {
   headers: Headers;
 };
 
@@ -1513,6 +1812,7 @@ export const getLsUrl = (driveID: string,
 }
 
 /**
+ * List the contents of a directory. Each entry returns its name, type, and inode id.
  * @summary List directory contents (POSIX opendir/readdir)
  */
 export const ls = async (driveID: string,
@@ -1546,7 +1846,7 @@ export const getLsQueryKey = (driveID: string,
     }
 
 
-export const getLsQueryOptions = <TData = Awaited<ReturnType<typeof ls>>, TError = Error>(driveID: string,
+export const getLsQueryOptions = <TData = Awaited<ReturnType<typeof ls>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(driveID: string,
     params: LsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ls>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
@@ -1566,10 +1866,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type LsQueryResult = NonNullable<Awaited<ReturnType<typeof ls>>>
-export type LsQueryError = Error
+export type LsQueryError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error
 
 
-export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = Error>(
+export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: LsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ls>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -1580,7 +1880,7 @@ export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = Error>(
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = Error>(
+export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: LsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ls>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -1591,7 +1891,7 @@ export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = Error>(
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = Error>(
+export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: LsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ls>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -1600,7 +1900,7 @@ export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = Error>(
  * @summary List directory contents (POSIX opendir/readdir)
  */
 
-export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = Error>(
+export function useLs<TData = Awaited<ReturnType<typeof ls>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: LsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ls>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -1624,15 +1924,40 @@ export type catResponse200 = {
   status: 200
 }
 
+export type catResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type catResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type catResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type catResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type catResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type catResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 422>
 }
 
 export type catResponseSuccess = (catResponse200) & {
   headers: Headers;
 };
-export type catResponseError = (catResponseDefault) & {
+export type catResponseError = (catResponse400 | catResponse401 | catResponse403 | catResponse404 | catResponse422 | catResponseDefault) & {
   headers: Headers;
 };
 
@@ -1655,6 +1980,7 @@ export const getCatUrl = (driveID: string,
 }
 
 /**
+ * Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target is not a file.
  * @summary Read file contents (POSIX open(O_RDONLY))
  */
 export const cat = async (driveID: string,
@@ -1688,7 +2014,7 @@ export const getCatQueryKey = (driveID: string,
     }
 
 
-export const getCatQueryOptions = <TData = Awaited<ReturnType<typeof cat>>, TError = Error>(driveID: string,
+export const getCatQueryOptions = <TData = Awaited<ReturnType<typeof cat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(driveID: string,
     params: CatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cat>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
@@ -1708,10 +2034,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type CatQueryResult = NonNullable<Awaited<ReturnType<typeof cat>>>
-export type CatQueryError = Error
+export type CatQueryError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error
 
 
-export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = Error>(
+export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: CatParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof cat>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -1722,7 +2048,7 @@ export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = Error>(
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = Error>(
+export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: CatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cat>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -1733,7 +2059,7 @@ export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = Error>(
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = Error>(
+export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: CatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cat>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -1742,7 +2068,7 @@ export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = Error>(
  * @summary Read file contents (POSIX open(O_RDONLY))
  */
 
-export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = Error>(
+export function useCat<TData = Awaited<ReturnType<typeof cat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: CatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cat>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -1766,15 +2092,45 @@ export type writeResponse200 = {
   status: 200
 }
 
+export type writeResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type writeResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type writeResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type writeResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type writeResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type writeResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type writeResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type writeResponseSuccess = (writeResponse200) & {
   headers: Headers;
 };
-export type writeResponseError = (writeResponseDefault) & {
+export type writeResponseError = (writeResponse400 | writeResponse401 | writeResponse403 | writeResponse404 | writeResponse409 | writeResponse422 | writeResponseDefault) & {
   headers: Headers;
 };
 
@@ -1789,6 +2145,7 @@ export const getWriteUrl = (driveID: string,) => {
 }
 
 /**
+ * Create or replace the file at `path` with `content`.
  * @summary Write inline content to a file
  */
 export const write = async (driveID: string,
@@ -1813,7 +2170,7 @@ export const write = async (driveID: string,
 
 
 
-export const getWriteMutationOptions = <TError = Error,
+export const getWriteMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof write>>, TError,{driveID: string;data?: WriteBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof write>>, TError,{driveID: string;data?: WriteBody}, TContext> => {
 
@@ -1842,12 +2199,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type WriteMutationResult = NonNullable<Awaited<ReturnType<typeof write>>>
     export type WriteMutationBody = WriteBody | undefined
-    export type WriteMutationError = Error
+    export type WriteMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Write inline content to a file
  */
-export const useWrite = <TError = Error,
+export const useWrite = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof write>>, TError,{driveID: string;data?: WriteBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof write>>,
@@ -1863,15 +2220,45 @@ export type symlinkResponse200 = {
   status: 200
 }
 
+export type symlinkResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type symlinkResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type symlinkResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type symlinkResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type symlinkResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type symlinkResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type symlinkResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type symlinkResponseSuccess = (symlinkResponse200) & {
   headers: Headers;
 };
-export type symlinkResponseError = (symlinkResponseDefault) & {
+export type symlinkResponseError = (symlinkResponse400 | symlinkResponse401 | symlinkResponse403 | symlinkResponse404 | symlinkResponse409 | symlinkResponse422 | symlinkResponseDefault) & {
   headers: Headers;
 };
 
@@ -1886,6 +2273,7 @@ export const getSymlinkUrl = (driveID: string,) => {
 }
 
 /**
+ * Create a symlink at `link_path` with `target` (POSIX symlink(2)). `target` may be absolute or relative; the link may dangle.
  * @summary Create a symbolic link (POSIX symlink(2))
  */
 export const symlink = async (driveID: string,
@@ -1910,7 +2298,7 @@ export const symlink = async (driveID: string,
 
 
 
-export const getSymlinkMutationOptions = <TError = Error,
+export const getSymlinkMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof symlink>>, TError,{driveID: string;data?: SymlinkBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof symlink>>, TError,{driveID: string;data?: SymlinkBody}, TContext> => {
 
@@ -1939,12 +2327,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type SymlinkMutationResult = NonNullable<Awaited<ReturnType<typeof symlink>>>
     export type SymlinkMutationBody = SymlinkBody | undefined
-    export type SymlinkMutationError = Error
+    export type SymlinkMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Create a symbolic link (POSIX symlink(2))
  */
-export const useSymlink = <TError = Error,
+export const useSymlink = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof symlink>>, TError,{driveID: string;data?: SymlinkBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof symlink>>,
@@ -1960,15 +2348,45 @@ export type hardlinkResponse200 = {
   status: 200
 }
 
+export type hardlinkResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type hardlinkResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type hardlinkResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type hardlinkResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type hardlinkResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type hardlinkResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type hardlinkResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type hardlinkResponseSuccess = (hardlinkResponse200) & {
   headers: Headers;
 };
-export type hardlinkResponseError = (hardlinkResponseDefault) & {
+export type hardlinkResponseError = (hardlinkResponse400 | hardlinkResponse401 | hardlinkResponse403 | hardlinkResponse404 | hardlinkResponse409 | hardlinkResponse422 | hardlinkResponseDefault) & {
   headers: Headers;
 };
 
@@ -1983,6 +2401,7 @@ export const getHardlinkUrl = (driveID: string,) => {
 }
 
 /**
+ * Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink. Source must be a regular file (not a directory, symlink, or mount). Same drive only.
  * @summary Create a hard link (POSIX link(2))
  */
 export const hardlink = async (driveID: string,
@@ -2007,7 +2426,7 @@ export const hardlink = async (driveID: string,
 
 
 
-export const getHardlinkMutationOptions = <TError = Error,
+export const getHardlinkMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hardlink>>, TError,{driveID: string;data?: HardlinkBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof hardlink>>, TError,{driveID: string;data?: HardlinkBody}, TContext> => {
 
@@ -2036,12 +2455,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type HardlinkMutationResult = NonNullable<Awaited<ReturnType<typeof hardlink>>>
     export type HardlinkMutationBody = HardlinkBody | undefined
-    export type HardlinkMutationError = Error
+    export type HardlinkMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Create a hard link (POSIX link(2))
  */
-export const useHardlink = <TError = Error,
+export const useHardlink = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hardlink>>, TError,{driveID: string;data?: HardlinkBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof hardlink>>,
@@ -2057,15 +2476,45 @@ export type mountResponse200 = {
   status: 200
 }
 
+export type mountResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type mountResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type mountResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type mountResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type mountResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type mountResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type mountResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type mountResponseSuccess = (mountResponse200) & {
   headers: Headers;
 };
-export type mountResponseError = (mountResponseDefault) & {
+export type mountResponseError = (mountResponse400 | mountResponse401 | mountResponse403 | mountResponse404 | mountResponse409 | mountResponse422 | mountResponseDefault) & {
   headers: Headers;
 };
 
@@ -2080,6 +2529,7 @@ export const getMountUrl = (driveID: string,) => {
 }
 
 /**
+ * Bind-mount another drive's root at `mount_path` in this drive. Path resolution crosses drives via the mount.
  * @summary Bind-mount another drive at a path (POSIX mount-like)
  */
 export const mount = async (driveID: string,
@@ -2104,7 +2554,7 @@ export const mount = async (driveID: string,
 
 
 
-export const getMountMutationOptions = <TError = Error,
+export const getMountMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mount>>, TError,{driveID: string;data?: MountBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof mount>>, TError,{driveID: string;data?: MountBody}, TContext> => {
 
@@ -2133,12 +2583,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type MountMutationResult = NonNullable<Awaited<ReturnType<typeof mount>>>
     export type MountMutationBody = MountBody | undefined
-    export type MountMutationError = Error
+    export type MountMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Bind-mount another drive at a path (POSIX mount-like)
  */
-export const useMount = <TError = Error,
+export const useMount = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mount>>, TError,{driveID: string;data?: MountBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof mount>>,
@@ -2154,15 +2604,45 @@ export type unmountResponse204 = {
   status: 204
 }
 
+export type unmountResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type unmountResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type unmountResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type unmountResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type unmountResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type unmountResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type unmountResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 204>
+  status: Exclude<HTTPStatusCodes, 204 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type unmountResponseSuccess = (unmountResponse204) & {
   headers: Headers;
 };
-export type unmountResponseError = (unmountResponseDefault) & {
+export type unmountResponseError = (unmountResponse400 | unmountResponse401 | unmountResponse403 | unmountResponse404 | unmountResponse409 | unmountResponse422 | unmountResponseDefault) & {
   headers: Headers;
 };
 
@@ -2185,6 +2665,7 @@ export const getUnmountUrl = (driveID: string,
 }
 
 /**
+ * Remove the bind-mount at `mount_path`.
  * @summary Remove a bind mount (POSIX umount-like)
  */
 export const unmount = async (driveID: string,
@@ -2209,7 +2690,7 @@ export const unmount = async (driveID: string,
 
 
 
-export const getUnmountMutationOptions = <TError = Error,
+export const getUnmountMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unmount>>, TError,{driveID: string;params: UnmountParams}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof unmount>>, TError,{driveID: string;params: UnmountParams}, TContext> => {
 
@@ -2238,12 +2719,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type UnmountMutationResult = NonNullable<Awaited<ReturnType<typeof unmount>>>
 
-    export type UnmountMutationError = Error
+    export type UnmountMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Remove a bind mount (POSIX umount-like)
  */
-export const useUnmount = <TError = Error,
+export const useUnmount = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unmount>>, TError,{driveID: string;params: UnmountParams}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof unmount>>,
@@ -2259,15 +2740,40 @@ export type statResponse200 = {
   status: 200
 }
 
+export type statResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type statResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type statResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type statResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type statResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type statResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 422>
 }
 
 export type statResponseSuccess = (statResponse200) & {
   headers: Headers;
 };
-export type statResponseError = (statResponseDefault) & {
+export type statResponseError = (statResponse400 | statResponse401 | statResponse403 | statResponse404 | statResponse422 | statResponseDefault) & {
   headers: Headers;
 };
 
@@ -2290,6 +2796,7 @@ export const getStatUrl = (driveID: string,
 }
 
 /**
+ * Return metadata for the file at `path` (POSIX stat(2)). Follows symlinks.
  * @summary Get file metadata, following symlinks (POSIX stat(2))
  */
 export const stat = async (driveID: string,
@@ -2323,7 +2830,7 @@ export const getStatQueryKey = (driveID: string,
     }
 
 
-export const getStatQueryOptions = <TData = Awaited<ReturnType<typeof stat>>, TError = Error>(driveID: string,
+export const getStatQueryOptions = <TData = Awaited<ReturnType<typeof stat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(driveID: string,
     params: StatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof stat>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
@@ -2343,10 +2850,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type StatQueryResult = NonNullable<Awaited<ReturnType<typeof stat>>>
-export type StatQueryError = Error
+export type StatQueryError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error
 
 
-export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = Error>(
+export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: StatParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof stat>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -2357,7 +2864,7 @@ export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = Error
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = Error>(
+export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: StatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof stat>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -2368,7 +2875,7 @@ export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = Error
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = Error>(
+export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: StatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof stat>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -2377,7 +2884,7 @@ export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = Error
  * @summary Get file metadata, following symlinks (POSIX stat(2))
  */
 
-export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = Error>(
+export function useStat<TData = Awaited<ReturnType<typeof stat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: StatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof stat>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -2401,15 +2908,40 @@ export type lstatResponse200 = {
   status: 200
 }
 
+export type lstatResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type lstatResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type lstatResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type lstatResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type lstatResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type lstatResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 422>
 }
 
 export type lstatResponseSuccess = (lstatResponse200) & {
   headers: Headers;
 };
-export type lstatResponseError = (lstatResponseDefault) & {
+export type lstatResponseError = (lstatResponse400 | lstatResponse401 | lstatResponse403 | lstatResponse404 | lstatResponse422 | lstatResponseDefault) & {
   headers: Headers;
 };
 
@@ -2432,6 +2964,7 @@ export const getLstatUrl = (driveID: string,
 }
 
 /**
+ * Return metadata for the file at `path` (POSIX lstat(2)). Does NOT follow symlinks.
  * @summary Get file metadata without following symlinks (POSIX lstat(2))
  */
 export const lstat = async (driveID: string,
@@ -2465,7 +2998,7 @@ export const getLstatQueryKey = (driveID: string,
     }
 
 
-export const getLstatQueryOptions = <TData = Awaited<ReturnType<typeof lstat>>, TError = Error>(driveID: string,
+export const getLstatQueryOptions = <TData = Awaited<ReturnType<typeof lstat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(driveID: string,
     params: LstatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstat>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
@@ -2485,10 +3018,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type LstatQueryResult = NonNullable<Awaited<ReturnType<typeof lstat>>>
-export type LstatQueryError = Error
+export type LstatQueryError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error
 
 
-export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = Error>(
+export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: LstatParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstat>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -2499,7 +3032,7 @@ export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = Err
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = Error>(
+export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: LstatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstat>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -2510,7 +3043,7 @@ export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = Err
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = Error>(
+export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: LstatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstat>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -2519,7 +3052,7 @@ export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = Err
  * @summary Get file metadata without following symlinks (POSIX lstat(2))
  */
 
-export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = Error>(
+export function useLstat<TData = Awaited<ReturnType<typeof lstat>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: LstatParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstat>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -2543,15 +3076,40 @@ export type readlinkResponse200 = {
   status: 200
 }
 
+export type readlinkResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type readlinkResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type readlinkResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type readlinkResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type readlinkResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type readlinkResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 422>
 }
 
 export type readlinkResponseSuccess = (readlinkResponse200) & {
   headers: Headers;
 };
-export type readlinkResponseError = (readlinkResponseDefault) & {
+export type readlinkResponseError = (readlinkResponse400 | readlinkResponse401 | readlinkResponse403 | readlinkResponse404 | readlinkResponse422 | readlinkResponseDefault) & {
   headers: Headers;
 };
 
@@ -2574,6 +3132,7 @@ export const getReadlinkUrl = (driveID: string,
 }
 
 /**
+ * Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.
  * @summary Read a symbolic link's target (POSIX readlink(2))
  */
 export const readlink = async (driveID: string,
@@ -2607,7 +3166,7 @@ export const getReadlinkQueryKey = (driveID: string,
     }
 
 
-export const getReadlinkQueryOptions = <TData = Awaited<ReturnType<typeof readlink>>, TError = Error>(driveID: string,
+export const getReadlinkQueryOptions = <TData = Awaited<ReturnType<typeof readlink>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(driveID: string,
     params: ReadlinkParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof readlink>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
@@ -2627,10 +3186,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type ReadlinkQueryResult = NonNullable<Awaited<ReturnType<typeof readlink>>>
-export type ReadlinkQueryError = Error
+export type ReadlinkQueryError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error
 
 
-export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError = Error>(
+export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: ReadlinkParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof readlink>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -2641,7 +3200,7 @@ export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError = Error>(
+export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: ReadlinkParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof readlink>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -2652,7 +3211,7 @@ export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError = Error>(
+export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: ReadlinkParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof readlink>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -2661,7 +3220,7 @@ export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError
  * @summary Read a symbolic link's target (POSIX readlink(2))
  */
 
-export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError = Error>(
+export function useReadlink<TData = Awaited<ReturnType<typeof readlink>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: ReadlinkParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof readlink>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -2685,15 +3244,40 @@ export type realpathResponse200 = {
   status: 200
 }
 
+export type realpathResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type realpathResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type realpathResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type realpathResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type realpathResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type realpathResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 422>
 }
 
 export type realpathResponseSuccess = (realpathResponse200) & {
   headers: Headers;
 };
-export type realpathResponseError = (realpathResponseDefault) & {
+export type realpathResponseError = (realpathResponse400 | realpathResponse401 | realpathResponse403 | realpathResponse404 | realpathResponse422 | realpathResponseDefault) & {
   headers: Headers;
 };
 
@@ -2716,6 +3300,7 @@ export const getRealpathUrl = (driveID: string,
 }
 
 /**
+ * Resolve all symlinks and return the canonical absolute path.
  * @summary Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))
  */
 export const realpath = async (driveID: string,
@@ -2749,7 +3334,7 @@ export const getRealpathQueryKey = (driveID: string,
     }
 
 
-export const getRealpathQueryOptions = <TData = Awaited<ReturnType<typeof realpath>>, TError = Error>(driveID: string,
+export const getRealpathQueryOptions = <TData = Awaited<ReturnType<typeof realpath>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(driveID: string,
     params: RealpathParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof realpath>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
@@ -2769,10 +3354,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type RealpathQueryResult = NonNullable<Awaited<ReturnType<typeof realpath>>>
-export type RealpathQueryError = Error
+export type RealpathQueryError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error
 
 
-export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError = Error>(
+export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: RealpathParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof realpath>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -2783,7 +3368,7 @@ export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError = Error>(
+export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: RealpathParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof realpath>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -2794,7 +3379,7 @@ export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError = Error>(
+export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: RealpathParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof realpath>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -2803,7 +3388,7 @@ export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError
  * @summary Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))
  */
 
-export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError = Error>(
+export function useRealpath<TData = Awaited<ReturnType<typeof realpath>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error>(
  driveID: string,
     params: RealpathParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof realpath>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -2827,15 +3412,45 @@ export type writeLargeResponse200 = {
   status: 200
 }
 
+export type writeLargeResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type writeLargeResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type writeLargeResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type writeLargeResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type writeLargeResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type writeLargeResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type writeLargeResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 409 | 422>
 }
 
 export type writeLargeResponseSuccess = (writeLargeResponse200) & {
   headers: Headers;
 };
-export type writeLargeResponseError = (writeLargeResponseDefault) & {
+export type writeLargeResponseError = (writeLargeResponse400 | writeLargeResponse401 | writeLargeResponse403 | writeLargeResponse404 | writeLargeResponse409 | writeLargeResponse422 | writeLargeResponseDefault) & {
   headers: Headers;
 };
 
@@ -2850,6 +3465,7 @@ export const getWriteLargeUrl = (driveID: string,) => {
 }
 
 /**
+ * Create or replace the S3 object at `path` with multipart `object` content.
  * @summary Create an S3-backed object node
  */
 export const writeLarge = async (driveID: string,
@@ -2874,7 +3490,7 @@ export const writeLarge = async (driveID: string,
 
 
 
-export const getWriteLargeMutationOptions = <TError = Error,
+export const getWriteLargeMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof writeLarge>>, TError,{driveID: string;data?: WriteLargeBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof writeLarge>>, TError,{driveID: string;data?: WriteLargeBody}, TContext> => {
 
@@ -2903,12 +3519,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type WriteLargeMutationResult = NonNullable<Awaited<ReturnType<typeof writeLarge>>>
     export type WriteLargeMutationBody = WriteLargeBody | undefined
-    export type WriteLargeMutationError = Error
+    export type WriteLargeMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Create an S3-backed object node
  */
-export const useWriteLarge = <TError = Error,
+export const useWriteLarge = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof writeLarge>>, TError,{driveID: string;data?: WriteLargeBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof writeLarge>>,
@@ -2924,15 +3540,35 @@ export type initiateUploadResponse200 = {
   status: 200
 }
 
+export type initiateUploadResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type initiateUploadResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type initiateUploadResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type initiateUploadResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
 export type initiateUploadResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404>
 }
 
 export type initiateUploadResponseSuccess = (initiateUploadResponse200) & {
   headers: Headers;
 };
-export type initiateUploadResponseError = (initiateUploadResponseDefault) & {
+export type initiateUploadResponseError = (initiateUploadResponse400 | initiateUploadResponse401 | initiateUploadResponse403 | initiateUploadResponse404 | initiateUploadResponseDefault) & {
   headers: Headers;
 };
 
@@ -2947,6 +3583,7 @@ export const getInitiateUploadUrl = (driveID: string,) => {
 }
 
 /**
+ * Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
  * @summary Initiate a presigned upload
  */
 export const initiateUpload = async (driveID: string,
@@ -2971,7 +3608,7 @@ export const initiateUpload = async (driveID: string,
 
 
 
-export const getInitiateUploadMutationOptions = <TError = Error,
+export const getInitiateUploadMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateUpload>>, TError,{driveID: string;data?: PresignRequest}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof initiateUpload>>, TError,{driveID: string;data?: PresignRequest}, TContext> => {
 
@@ -3000,12 +3637,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type InitiateUploadMutationResult = NonNullable<Awaited<ReturnType<typeof initiateUpload>>>
     export type InitiateUploadMutationBody = PresignRequest | undefined
-    export type InitiateUploadMutationError = Error
+    export type InitiateUploadMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error
 
     /**
  * @summary Initiate a presigned upload
  */
-export const useInitiateUpload = <TError = Error,
+export const useInitiateUpload = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateUpload>>, TError,{driveID: string;data?: PresignRequest}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof initiateUpload>>,
@@ -3021,15 +3658,40 @@ export type completeUploadResponse200 = {
   status: 200
 }
 
+export type completeUploadResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type completeUploadResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type completeUploadResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type completeUploadResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type completeUploadResponse422 = {
+  data: UnprocessableEntityResponse
+  status: 422
+}
+
 export type completeUploadResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404 | 422>
 }
 
 export type completeUploadResponseSuccess = (completeUploadResponse200) & {
   headers: Headers;
 };
-export type completeUploadResponseError = (completeUploadResponseDefault) & {
+export type completeUploadResponseError = (completeUploadResponse400 | completeUploadResponse401 | completeUploadResponse403 | completeUploadResponse404 | completeUploadResponse422 | completeUploadResponseDefault) & {
   headers: Headers;
 };
 
@@ -3045,6 +3707,7 @@ export const getCompleteUploadUrl = (driveID: string,
 }
 
 /**
+ * Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into the parent directory.
  * @summary Complete a presigned upload and create the object node
  */
 export const completeUpload = async (driveID: string,
@@ -3070,7 +3733,7 @@ export const completeUpload = async (driveID: string,
 
 
 
-export const getCompleteUploadMutationOptions = <TError = Error,
+export const getCompleteUploadMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeUpload>>, TError,{driveID: string;uploadId: string;data?: UploadCompleteRequest}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof completeUpload>>, TError,{driveID: string;uploadId: string;data?: UploadCompleteRequest}, TContext> => {
 
@@ -3099,12 +3762,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type CompleteUploadMutationResult = NonNullable<Awaited<ReturnType<typeof completeUpload>>>
     export type CompleteUploadMutationBody = UploadCompleteRequest | undefined
-    export type CompleteUploadMutationError = Error
+    export type CompleteUploadMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error
 
     /**
  * @summary Complete a presigned upload and create the object node
  */
-export const useCompleteUpload = <TError = Error,
+export const useCompleteUpload = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeUpload>>, TError,{driveID: string;uploadId: string;data?: UploadCompleteRequest}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof completeUpload>>,
@@ -3120,15 +3783,35 @@ export type presignDownloadResponse200 = {
   status: 200
 }
 
+export type presignDownloadResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type presignDownloadResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type presignDownloadResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type presignDownloadResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
 export type presignDownloadResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401 | 403 | 404>
 }
 
 export type presignDownloadResponseSuccess = (presignDownloadResponse200) & {
   headers: Headers;
 };
-export type presignDownloadResponseError = (presignDownloadResponseDefault) & {
+export type presignDownloadResponseError = (presignDownloadResponse400 | presignDownloadResponse401 | presignDownloadResponse403 | presignDownloadResponse404 | presignDownloadResponseDefault) & {
   headers: Headers;
 };
 
@@ -3151,6 +3834,7 @@ export const getPresignDownloadUrl = (driveID: string,
 }
 
 /**
+ * Generate a presigned GET URL for downloading an existing object.
  * @summary Get a presigned download URL for an object node
  */
 export const presignDownload = async (driveID: string,
@@ -3184,7 +3868,7 @@ export const getPresignDownloadQueryKey = (driveID: string,
     }
 
 
-export const getPresignDownloadQueryOptions = <TData = Awaited<ReturnType<typeof presignDownload>>, TError = Error>(driveID: string,
+export const getPresignDownloadQueryOptions = <TData = Awaited<ReturnType<typeof presignDownload>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(driveID: string,
     params: PresignDownloadParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof presignDownload>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
@@ -3204,10 +3888,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type PresignDownloadQueryResult = NonNullable<Awaited<ReturnType<typeof presignDownload>>>
-export type PresignDownloadQueryError = Error
+export type PresignDownloadQueryError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error
 
 
-export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDownload>>, TError = Error>(
+export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDownload>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string,
     params: PresignDownloadParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof presignDownload>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -3218,7 +3902,7 @@ export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDown
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDownload>>, TError = Error>(
+export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDownload>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string,
     params: PresignDownloadParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof presignDownload>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -3229,7 +3913,7 @@ export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDown
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDownload>>, TError = Error>(
+export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDownload>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string,
     params: PresignDownloadParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof presignDownload>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -3238,7 +3922,7 @@ export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDown
  * @summary Get a presigned download URL for an object node
  */
 
-export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDownload>>, TError = Error>(
+export function usePresignDownload<TData = Awaited<ReturnType<typeof presignDownload>>, TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>(
  driveID: string,
     params: PresignDownloadParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof presignDownload>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
@@ -3262,15 +3946,25 @@ export type getUserResponse200 = {
   status: 200
 }
 
+export type getUserResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getUserResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
 export type getUserResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 401 | 404>
 }
 
 export type getUserResponseSuccess = (getUserResponse200) & {
   headers: Headers;
 };
-export type getUserResponseError = (getUserResponseDefault) & {
+export type getUserResponseError = (getUserResponse401 | getUserResponse404 | getUserResponseDefault) & {
   headers: Headers;
 };
 
@@ -3285,6 +3979,7 @@ export const getGetUserUrl = () => {
 }
 
 /**
+ * Return the user identified by `id`.
  * @summary Get current user
  */
 export const getUser = async ( options?: RequestInit): Promise<getUserResponse> => {
@@ -3316,7 +4011,7 @@ export const getGetUserQueryKey = () => {
     }
 
 
-export const getGetUserQueryOptions = <TData = Awaited<ReturnType<typeof getUser>>, TError = Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData>>, fetch?: RequestInit}
+export const getGetUserQueryOptions = <TData = Awaited<ReturnType<typeof getUser>>, TError = UnauthorizedResponse | NotFoundResponse | Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
@@ -3335,10 +4030,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type GetUserQueryResult = NonNullable<Awaited<ReturnType<typeof getUser>>>
-export type GetUserQueryError = Error
+export type GetUserQueryError = UnauthorizedResponse | NotFoundResponse | Error
 
 
-export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = Error>(
+export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = UnauthorizedResponse | NotFoundResponse | Error>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getUser>>,
@@ -3348,7 +4043,7 @@ export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError =
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = Error>(
+export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = UnauthorizedResponse | NotFoundResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getUser>>,
@@ -3358,7 +4053,7 @@ export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError =
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = Error>(
+export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = UnauthorizedResponse | NotFoundResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -3366,7 +4061,7 @@ export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError =
  * @summary Get current user
  */
 
-export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = Error>(
+export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = UnauthorizedResponse | NotFoundResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -3389,15 +4084,25 @@ export type upsertUserResponse200 = {
   status: 200
 }
 
+export type upsertUserResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type upsertUserResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
 export type upsertUserResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 400 | 401>
 }
 
 export type upsertUserResponseSuccess = (upsertUserResponse200) & {
   headers: Headers;
 };
-export type upsertUserResponseError = (upsertUserResponseDefault) & {
+export type upsertUserResponseError = (upsertUserResponse400 | upsertUserResponse401 | upsertUserResponseDefault) & {
   headers: Headers;
 };
 
@@ -3412,6 +4117,7 @@ export const getUpsertUserUrl = () => {
 }
 
 /**
+ * Create or update a user record. Admin or self-service depending on `provider`.
  * @summary Upsert a user from OIDC claims
  */
 export const upsertUser = async (upsertUserBody?: UpsertUserBody, options?: RequestInit): Promise<upsertUserResponse> => {
@@ -3435,7 +4141,7 @@ export const upsertUser = async (upsertUserBody?: UpsertUserBody, options?: Requ
 
 
 
-export const getUpsertUserMutationOptions = <TError = Error,
+export const getUpsertUserMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertUser>>, TError,{data?: UpsertUserBody}, TContext>, fetch?: RequestInit}
 ): UseMutationOptions<Awaited<ReturnType<typeof upsertUser>>, TError,{data?: UpsertUserBody}, TContext> => {
 
@@ -3464,12 +4170,12 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
 
     export type UpsertUserMutationResult = NonNullable<Awaited<ReturnType<typeof upsertUser>>>
     export type UpsertUserMutationBody = UpsertUserBody | undefined
-    export type UpsertUserMutationError = Error
+    export type UpsertUserMutationError = BadRequestResponse | UnauthorizedResponse | Error
 
     /**
  * @summary Upsert a user from OIDC claims
  */
-export const useUpsertUser = <TError = Error,
+export const useUpsertUser = <TError = BadRequestResponse | UnauthorizedResponse | Error,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertUser>>, TError,{data?: UpsertUserBody}, TContext>, fetch?: RequestInit}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof upsertUser>>,
@@ -3480,464 +4186,25 @@ export const useUpsertUser = <TError = Error,
       return useMutation(getUpsertUserMutationOptions(options), queryClient);
     }
 
-export type googleLoginResponse302 = {
-  data: void
-  status: 302
-}
-
-;
-export type googleLoginResponseError = (googleLoginResponse302) & {
-  headers: Headers;
-};
-
-export type googleLoginResponse = (googleLoginResponseError)
-
-export const getGoogleLoginUrl = () => {
-
-
-
-
-  return `/api/auth/google`
-}
-
-/**
- * @summary Initiate Google OAuth login (web)
- */
-export const googleLogin = async ( options?: RequestInit): Promise<googleLoginResponse> => {
-
-  const res = await fetch(getGoogleLoginUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: googleLoginResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as googleLoginResponse
-}
-
-
-
-
-
-export const getGoogleLoginQueryKey = () => {
-    return [
-    `/api/auth/google`
-    ] as const;
-    }
-
-
-export const getGoogleLoginQueryOptions = <TData = Awaited<ReturnType<typeof googleLogin>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof googleLogin>>, TError, TData>>, fetch?: RequestInit}
-) => {
-
-const {query: queryOptions, fetch: fetchOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGoogleLoginQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof googleLogin>>> = ({ signal }) => googleLogin({ signal, ...fetchOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof googleLogin>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GoogleLoginQueryResult = NonNullable<Awaited<ReturnType<typeof googleLogin>>>
-export type GoogleLoginQueryError = void
-
-
-export function useGoogleLogin<TData = Awaited<ReturnType<typeof googleLogin>>, TError = void>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof googleLogin>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof googleLogin>>,
-          TError,
-          Awaited<ReturnType<typeof googleLogin>>
-        > , 'initialData'
-      >, fetch?: RequestInit}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGoogleLogin<TData = Awaited<ReturnType<typeof googleLogin>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof googleLogin>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof googleLogin>>,
-          TError,
-          Awaited<ReturnType<typeof googleLogin>>
-        > , 'initialData'
-      >, fetch?: RequestInit}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGoogleLogin<TData = Awaited<ReturnType<typeof googleLogin>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof googleLogin>>, TError, TData>>, fetch?: RequestInit}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Initiate Google OAuth login (web)
- */
-
-export function useGoogleLogin<TData = Awaited<ReturnType<typeof googleLogin>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof googleLogin>>, TError, TData>>, fetch?: RequestInit}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGoogleLoginQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
-export type googleNativeLoginResponse200 = {
-  data: GoogleNativeLogin200
-  status: 200
-}
-
-export type googleNativeLoginResponseDefault = {
-  data: Error
-  status: Exclude<HTTPStatusCodes, 200>
-}
-
-export type googleNativeLoginResponseSuccess = (googleNativeLoginResponse200) & {
-  headers: Headers;
-};
-export type googleNativeLoginResponseError = (googleNativeLoginResponseDefault) & {
-  headers: Headers;
-};
-
-export type googleNativeLoginResponse = (googleNativeLoginResponseSuccess | googleNativeLoginResponseError)
-
-export const getGoogleNativeLoginUrl = () => {
-
-
-
-
-  return `/api/auth/google/native`
-}
-
-/**
- * @summary Exchange a Google id_token for a mdrive session (mobile)
- */
-export const googleNativeLogin = async (googleNativeLoginBody?: GoogleNativeLoginBody, options?: RequestInit): Promise<googleNativeLoginResponse> => {
-
-  const res = await fetch(getGoogleNativeLoginUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(googleNativeLoginBody)
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: googleNativeLoginResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as googleNativeLoginResponse
-}
-
-
-
-
-export const getGoogleNativeLoginMutationOptions = <TError = Error,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof googleNativeLogin>>, TError,{data?: GoogleNativeLoginBody}, TContext>, fetch?: RequestInit}
-): UseMutationOptions<Awaited<ReturnType<typeof googleNativeLogin>>, TError,{data?: GoogleNativeLoginBody}, TContext> => {
-
-const mutationKey = ['googleNativeLogin'];
-const {mutation: mutationOptions, fetch: fetchOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, fetch: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof googleNativeLogin>>, {data?: GoogleNativeLoginBody}> = (props) => {
-          const {data} = props ?? {};
-
-          return  googleNativeLogin(data,fetchOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type GoogleNativeLoginMutationResult = NonNullable<Awaited<ReturnType<typeof googleNativeLogin>>>
-    export type GoogleNativeLoginMutationBody = GoogleNativeLoginBody | undefined
-    export type GoogleNativeLoginMutationError = Error
-
-    /**
- * @summary Exchange a Google id_token for a mdrive session (mobile)
- */
-export const useGoogleNativeLogin = <TError = Error,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof googleNativeLogin>>, TError,{data?: GoogleNativeLoginBody}, TContext>, fetch?: RequestInit}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof googleNativeLogin>>,
-        TError,
-        {data?: GoogleNativeLoginBody},
-        TContext
-      > => {
-      return useMutation(getGoogleNativeLoginMutationOptions(options), queryClient);
-    }
-
-export type authCallbackResponse302 = {
-  data: void
-  status: 302
-}
-
-export type authCallbackResponseDefault = {
-  data: Error
-  status: Exclude<HTTPStatusCodes, 302>
-}
-
-;
-export type authCallbackResponseError = (authCallbackResponse302 | authCallbackResponseDefault) & {
-  headers: Headers;
-};
-
-export type authCallbackResponse = (authCallbackResponseError)
-
-export const getAuthCallbackUrl = (params: AuthCallbackParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/auth/callback?${stringifiedParams}` : `/api/auth/callback`
-}
-
-/**
- * @summary OAuth callback from Zitadel
- */
-export const authCallback = async (params: AuthCallbackParams, options?: RequestInit): Promise<authCallbackResponse> => {
-
-  const res = await fetch(getAuthCallbackUrl(params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: authCallbackResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as authCallbackResponse
-}
-
-
-
-
-
-export const getAuthCallbackQueryKey = (params?: AuthCallbackParams,) => {
-    return [
-    `/api/auth/callback`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getAuthCallbackQueryOptions = <TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(params: AuthCallbackParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>>, fetch?: RequestInit}
-) => {
-
-const {query: queryOptions, fetch: fetchOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getAuthCallbackQueryKey(params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof authCallback>>> = ({ signal }) => authCallback(params, { signal, ...fetchOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type AuthCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof authCallback>>>
-export type AuthCallbackQueryError = void | Error
-
-
-export function useAuthCallback<TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(
- params: AuthCallbackParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof authCallback>>,
-          TError,
-          Awaited<ReturnType<typeof authCallback>>
-        > , 'initialData'
-      >, fetch?: RequestInit}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAuthCallback<TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(
- params: AuthCallbackParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof authCallback>>,
-          TError,
-          Awaited<ReturnType<typeof authCallback>>
-        > , 'initialData'
-      >, fetch?: RequestInit}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAuthCallback<TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(
- params: AuthCallbackParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>>, fetch?: RequestInit}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary OAuth callback from Zitadel
- */
-
-export function useAuthCallback<TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(
- params: AuthCallbackParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>>, fetch?: RequestInit}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getAuthCallbackQueryOptions(params,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
-export type authLogoutResponse204 = {
-  data: void
-  status: 204
-}
-
-export type authLogoutResponseDefault = {
-  data: Error
-  status: Exclude<HTTPStatusCodes, 204>
-}
-
-export type authLogoutResponseSuccess = (authLogoutResponse204) & {
-  headers: Headers;
-};
-export type authLogoutResponseError = (authLogoutResponseDefault) & {
-  headers: Headers;
-};
-
-export type authLogoutResponse = (authLogoutResponseSuccess | authLogoutResponseError)
-
-export const getAuthLogoutUrl = () => {
-
-
-
-
-  return `/api/auth/logout`
-}
-
-/**
- * @summary Destroy the current session
- */
-export const authLogout = async ( options?: RequestInit): Promise<authLogoutResponse> => {
-
-  const res = await fetch(getAuthLogoutUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: authLogoutResponse['data'] = body ? JSON.parse(body) : undefined
-  return { data, status: res.status, headers: res.headers } as authLogoutResponse
-}
-
-
-
-
-export const getAuthLogoutMutationOptions = <TError = Error,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError,void, TContext>, fetch?: RequestInit}
-): UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError,void, TContext> => {
-
-const mutationKey = ['authLogout'];
-const {mutation: mutationOptions, fetch: fetchOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, fetch: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authLogout>>, void> = () => {
-
-
-          return  authLogout(fetchOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type AuthLogoutMutationResult = NonNullable<Awaited<ReturnType<typeof authLogout>>>
-
-    export type AuthLogoutMutationError = Error
-
-    /**
- * @summary Destroy the current session
- */
-export const useAuthLogout = <TError = Error,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError,void, TContext>, fetch?: RequestInit}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof authLogout>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getAuthLogoutMutationOptions(options), queryClient);
-    }
-
 export type authMeResponse200 = {
   data: User
   status: 200
 }
 
+export type authMeResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
 export type authMeResponseDefault = {
   data: Error
-  status: Exclude<HTTPStatusCodes, 200>
+  status: Exclude<HTTPStatusCodes, 200 | 401>
 }
 
 export type authMeResponseSuccess = (authMeResponse200) & {
   headers: Headers;
 };
-export type authMeResponseError = (authMeResponseDefault) & {
+export type authMeResponseError = (authMeResponse401 | authMeResponseDefault) & {
   headers: Headers;
 };
 
@@ -3952,6 +4219,7 @@ export const getAuthMeUrl = () => {
 }
 
 /**
+ * Return the current authenticated user (200) or 401 if no session.
  * @summary Get the current authenticated user
  */
 export const authMe = async ( options?: RequestInit): Promise<authMeResponse> => {
@@ -3983,7 +4251,7 @@ export const getAuthMeQueryKey = () => {
     }
 
 
-export const getAuthMeQueryOptions = <TData = Awaited<ReturnType<typeof authMe>>, TError = Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>, fetch?: RequestInit}
+export const getAuthMeQueryOptions = <TData = Awaited<ReturnType<typeof authMe>>, TError = UnauthorizedResponse | Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
@@ -4002,10 +4270,10 @@ const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 }
 
 export type AuthMeQueryResult = NonNullable<Awaited<ReturnType<typeof authMe>>>
-export type AuthMeQueryError = Error
+export type AuthMeQueryError = UnauthorizedResponse | Error
 
 
-export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Error>(
+export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = UnauthorizedResponse | Error>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof authMe>>,
@@ -4015,7 +4283,7 @@ export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = E
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Error>(
+export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = UnauthorizedResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof authMe>>,
@@ -4025,7 +4293,7 @@ export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = E
       >, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Error>(
+export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = UnauthorizedResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -4033,7 +4301,7 @@ export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = E
  * @summary Get the current authenticated user
  */
 
-export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Error>(
+export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = UnauthorizedResponse | Error>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>, fetch?: RequestInit}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

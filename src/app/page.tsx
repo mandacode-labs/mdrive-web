@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  login,
+  logout,
   useCreateDrive,
   useDrives,
-  useGoogleLogin,
-  useLogout,
   useMe,
 } from "@/api/hooks";
 import { XPImageIcons } from "@/components/icons/xp_image_icons";
@@ -21,10 +21,8 @@ export default function SystemSelectionPage() {
   const meQuery = useMe();
   const isAuthenticated = !!meQuery.data;
 
-  const logoutMutation = useLogout();
   const listDrivesQuery = useDrives(isAuthenticated);
   const createDriveMutation = useCreateDrive();
-  const googleLogin = useGoogleLogin();
 
   useEffect(() => {
     if (createDriveMutation.isSuccess) {
@@ -40,7 +38,6 @@ export default function SystemSelectionPage() {
 
   const handleCreateDrive = () => {
     if (!driveName.trim()) return;
-
     createDriveMutation.mutate({
       data: {
         name: driveName.trim(),
@@ -55,16 +52,9 @@ export default function SystemSelectionPage() {
     setDriveDescription("");
   };
 
-  const handleLoginClick = () => {
-    googleLogin();
-  };
-
   const handleTurnOffClick = () => {
-    if (isAuthenticated) {
-      logoutMutation.mutate();
-    } else {
-      handleLoginClick();
-    }
+    if (isAuthenticated) logout();
+    else login();
   };
 
   if (meQuery.isLoading || meQuery.isPending) {
@@ -127,7 +117,7 @@ export default function SystemSelectionPage() {
             <div className={styles.login_section}>
               <button
                 className={styles.login_button}
-                onClick={handleLoginClick}
+                onClick={login}
                 type="button"
               >
                 <svg
@@ -141,7 +131,7 @@ export default function SystemSelectionPage() {
                   <title>User</title>
                   <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                 </svg>
-                <span>Login with Google</span>
+                <span>Log in</span>
               </button>
             </div>
           ) : isCreateMode ? (
@@ -242,8 +232,7 @@ export default function SystemSelectionPage() {
           className={styles.power_button}
           onClick={handleTurnOffClick}
           type="button"
-          disabled={logoutMutation.isPending}
-          aria-label="Log out"
+          aria-label={isAuthenticated ? "Log out" : "Log in"}
         >
           <svg
             viewBox="0 0 24 24"
@@ -254,9 +243,7 @@ export default function SystemSelectionPage() {
             <title>Power</title>
             <path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z" />
           </svg>
-          <span>
-            {logoutMutation.isPending ? "Logging out..." : "Log out"}
-          </span>
+          <span>{isAuthenticated ? "Log out" : "Log in"}</span>
         </button>
         <span className={styles.bottom_hint}>
           {!isAuthenticated

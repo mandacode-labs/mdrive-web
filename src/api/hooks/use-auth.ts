@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/api/generated/model";
+import { queryClient } from "@/api/client";
 import {
   getAuthMeQueryOptions,
-  getAuthLogoutMutationOptions,
   getCreateDriveMutationOptions,
   getListDrivesQueryOptions,
   getDeleteDriveMutationOptions,
@@ -27,52 +27,54 @@ export function useDrives(enabled: boolean) {
   });
 }
 
-export function useLogout() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...getAuthLogoutMutationOptions(),
-    onSuccess: () => {
-      queryClient.removeQueries();
-    },
-  });
-}
-
 export function useCreateDrive() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
   return useMutation({
     ...getCreateDriveMutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
+      qc.invalidateQueries({ queryKey: ["/api/v1/drives"] });
     },
   });
 }
 
 export function useDeleteDrive() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
   return useMutation({
     ...getDeleteDriveMutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
+      qc.invalidateQueries({ queryKey: ["/api/v1/drives"] });
     },
   });
 }
 
 export function useRestoreDrive() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
   return useMutation({
     ...getRestoreDriveMutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
+      qc.invalidateQueries({ queryKey: ["/api/v1/drives"] });
     },
   });
 }
 
-export function useGoogleLogin() {
-  return () => {
-    window.location.href = "/api/auth/google";
-  };
+/**
+ * Backend middleware drives the Zitadel login flow. We just navigate to a
+ * protected route — the middleware will redirect to Zitadel if no session
+ * cookie is present, then back to `/` with the cookie set.
+ */
+export function login() {
+  window.location.href = "/";
+}
+
+/**
+ * No explicit logout endpoint is exposed in the API. The current fallback
+ * clears the local cache and reloads — useful until the backend adds a
+ * proper sign-out endpoint.
+ */
+export function logout() {
+  queryClient.removeQueries();
+  window.location.href = "/";
 }

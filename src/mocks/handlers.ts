@@ -76,11 +76,6 @@ export const handlers = [
     });
   }),
 
-  http.post("/api/auth/logout", () => {
-    isAuthenticated = false;
-    return new HttpResponse(null, { status: 204 });
-  }),
-
   http.get("/api/v1/drives", () =>
     authed(() => HttpResponse.json(listDrives()))
   ),
