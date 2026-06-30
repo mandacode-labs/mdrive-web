@@ -232,6 +232,11 @@
   border-top: 1px solid #b5b5b5;
 }
 
+.footerActions {
+  display: flex;
+  gap: 6px;
+}
+
 .footerText {
   font-size: 11px;
   color: #444;

@@ -7,6 +7,7 @@ import {
 } from "@/api/generated";
 
 export type UploadStatus =
+  | "queued"
   | "pending"
   | "uploading"
   | "completed"
@@ -73,6 +74,8 @@ export function useUploadManager(driveID: string, basePath: string) {
       if (
         !task ||
         task.status === "cancelled" ||
+        task.status === "completed" ||
+        task.status === "skipped" ||
         isCancelledRef.current.has(taskId)
       ) {
         return;
@@ -85,7 +88,7 @@ export function useUploadManager(driveID: string, basePath: string) {
         ...prev,
         isUploading: true,
         tasks: prev.tasks.map((t) =>
-          t.id === taskId
+          t.id === taskId && t.status === "queued"
             ? { ...t, status: "uploading", error: undefined, progress: 0 }
             : t
         ),
@@ -224,31 +227,46 @@ export function useUploadManager(driveID: string, basePath: string) {
     [driveID, initiateUpload, completeUpload, checkDuplicate]
   );
 
-  const addFiles = useCallback(
-    async (files: FileList | File[]) => {
-      const newTasks: UploadTask[] = Array.from(files).map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-        fileName: file.name,
-        filePath: joinPath(basePath, file.name),
-        status: "pending",
-        progress: 0,
-        totalBytes: file.size,
-        retryCount: 0,
-      }));
+  const addFiles = useCallback((files: FileList | File[]) => {
+    const newTasks: UploadTask[] = Array.from(files).map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      fileName: file.name,
+      filePath: joinPath(basePath, file.name),
+      status: "queued",
+      progress: 0,
+      totalBytes: file.size,
+      retryCount: 0,
+    }));
 
-      setState((prev) => ({
-        ...prev,
-        tasks: [...prev.tasks, ...newTasks],
-      }));
+    setState((prev) => ({
+      ...prev,
+      tasks: [...prev.tasks, ...newTasks],
+    }));
+  }, [basePath]);
 
-      for (let i = 0; i < newTasks.length; i += CONCURRENCY) {
-        const batch = newTasks.slice(i, i + CONCURRENCY);
-        await Promise.allSettled(batch.map((task) => uploadFile(task.id)));
-      }
+  const startUpload = useCallback(
+    (taskId: string) => {
+      const task = tasksRef.current.find((t) => t.id === taskId);
+      if (task?.status !== "queued") return;
+      void new Promise((resolve) => setTimeout(resolve, 0)).then(() =>
+        uploadFile(taskId)
+      );
     },
-    [uploadFile, basePath]
+    [uploadFile]
   );
+
+  const startAllUploads = useCallback(() => {
+    const queued = tasksRef.current.filter((t) => t.status === "queued");
+    // Defer each start by one tick so tasksRef has committed state changes
+    // from any preceding setState before uploadFile looks the task up.
+    void new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+      for (let i = 0; i < queued.length; i += CONCURRENCY) {
+        const batch = queued.slice(i, i + CONCURRENCY);
+        for (const task of batch) uploadFile(task.id);
+      }
+    });
+  }, [uploadFile]);
 
   const cancelUpload = useCallback((taskId: string) => {
     isCancelledRef.current.add(taskId);
@@ -277,7 +295,7 @@ export function useUploadManager(driveID: string, basePath: string) {
           t.id === taskId
             ? {
                 ...t,
-                status: "pending",
+                status: "queued",
                 error: undefined,
                 retryCount: 0,
                 progress: 0,
@@ -286,7 +304,9 @@ export function useUploadManager(driveID: string, basePath: string) {
         ),
       }));
 
-      void uploadFile(taskId);
+      void new Promise((resolve) => setTimeout(resolve, 0)).then(() =>
+        uploadFile(taskId)
+      );
     },
     [uploadFile]
   );
@@ -306,7 +326,10 @@ export function useUploadManager(driveID: string, basePath: string) {
     setState((prev) => ({
       ...prev,
       tasks: prev.tasks.filter(
-        (t) => t.status !== "completed" && t.status !== "cancelled"
+        (t) =>
+          t.status !== "completed" &&
+          t.status !== "cancelled" &&
+          t.status !== "skipped"
       ),
     }));
   }, []);
@@ -315,6 +338,8 @@ export function useUploadManager(driveID: string, basePath: string) {
     tasks: state.tasks,
     isUploading: state.isUploading,
     addFiles,
+    startUpload,
+    startAllUploads,
     cancelUpload,
     retryUpload,
     removeTask,

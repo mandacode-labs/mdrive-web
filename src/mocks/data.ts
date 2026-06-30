@@ -21,12 +21,12 @@ export interface MockFile {
   type: FileType;
   mode: number;
   size: number;
-  ino: string;
+  nlink: number;
+  atime: string;
   mtime: string;
   ctime: string;
   crtime: string;
-  atime: string;
-  nlink: number;
+  ino: string;
   uid: string;
   gid: string;
 }
@@ -62,12 +62,12 @@ function makeFile(
     type,
     mode: isDir ? 0o040755 : 0o100644,
     size,
-    ino: inodeID,
+    nlink: 1,
+    atime: now,
     mtime: now,
     ctime: now,
     crtime: now,
-    atime: now,
-    nlink: 1,
+    ino: inodeID,
     uid: "1000",
     gid: "1000",
   };
@@ -76,8 +76,31 @@ function makeFile(
   return file;
 }
 
+function mkdir(driveID: string, parentPath: string, name: string): MockFile {
+  const parent = mockFiles.get(mockPathToInode.get(`${driveID}::${parentPath}`) ?? "");
+  if (!parent) throw new Error(`parent not found: ${driveID}::${parentPath}`);
+  return makeFile(driveID, parent.inodeID, parentPath, name, BackendFileType.Directory);
+}
+
+function mkfile(
+  driveID: string,
+  parentPath: string,
+  name: string,
+  size = 0
+): MockFile {
+  const parent = mockFiles.get(mockPathToInode.get(`${driveID}::${parentPath}`) ?? "");
+  if (!parent) throw new Error(`parent not found: ${driveID}::${parentPath}`);
+  return makeFile(
+    driveID,
+    parent.inodeID,
+    parentPath,
+    name,
+    BackendFileType.Regular,
+    size
+  );
+}
+
 function initSampleDrive(driveID: string, name: string): MockDrive {
-  const rootInodeID = uid();
   const now = ISO();
   const drive: MockDrive = {
     id: driveID,
@@ -85,23 +108,22 @@ function initSampleDrive(driveID: string, name: string): MockDrive {
     name,
     description: "Sample drive",
     ownerID: "user-123",
-    rootNodeID: rootInodeID,
+    rootNodeID: "",
     createdAt: now,
     updatedAt: now,
   };
   mockDrives.set(driveID, drive);
 
-  // root directory (unique inodeID pre-generated so the drive stores it)
-  makeFile(driveID, null, "", "root", BackendFileType.Directory, 0, rootInodeID);
+  const root = makeFile(driveID, null, "", "root", BackendFileType.Directory);
+  drive.rootNodeID = root.inodeID;
 
-  // Sample structure under /home
-  makeFile(driveID, rootInodeID, "/", "home", BackendFileType.Directory);
-  makeFile(driveID, rootInodeID, "/home", "Documents", BackendFileType.Directory);
-  makeFile(driveID, rootInodeID, "/home", "Pictures", BackendFileType.Directory);
-  makeFile(driveID, rootInodeID, "/home", "Music", BackendFileType.Directory);
-  makeFile(driveID, rootInodeID, "/home", "README.md", BackendFileType.Regular, 1024);
-  makeFile(driveID, rootInodeID, "/home/Pictures", "sample.png", BackendFileType.Regular, 2048);
-  makeFile(driveID, rootInodeID, "/home/Music", "song.mp3", BackendFileType.Regular, 4096);
+  const home = mkdir(driveID, "/", "home");
+  mkdir(driveID, home.path, "Documents");
+  mkdir(driveID, home.path, "Pictures");
+  mkdir(driveID, home.path, "Music");
+  mkfile(driveID, home.path, "README.md", 1024);
+  mkfile(driveID, `${home.path}/Pictures`, "sample.png", 2048);
+  mkfile(driveID, `${home.path}/Music`, "song.mp3", 4096);
 
   return drive;
 }
@@ -122,19 +144,19 @@ export function getDriveByID(driveID: string): MockDrive | undefined {
 export function createDrive(name: string, description?: string): MockDrive {
   const id = `drv-${uid()}`;
   const now = ISO();
-  const rootInodeID = uid();
   const drive: MockDrive = {
     id,
     publicID: id,
     name,
     description,
     ownerID: "user-123",
-    rootNodeID: rootInodeID,
+    rootNodeID: "",
     createdAt: now,
     updatedAt: now,
   };
   mockDrives.set(id, drive);
-  makeFile(id, null, "", "root", BackendFileType.Directory, 0, rootInodeID);
+  const root = makeFile(id, null, "", "root", BackendFileType.Directory);
+  drive.rootNodeID = root.inodeID;
   return drive;
 }
 
@@ -168,29 +190,41 @@ export function listChildren(driveID: string, path: string): MockFile[] {
   );
 }
 
-export function mkdir(driveID: string, path: string): MockFile | null {
+function createInDir(
+  driveID: string,
+  path: string,
+  type: FileType,
+  size = 0
+): MockFile | null {
   if (resolveByPath(driveID, path)) return null;
   const lastSlash = path.lastIndexOf("/");
   const parentPath = lastSlash > 0 ? path.slice(0, lastSlash) : "/";
   const name = path.slice(lastSlash + 1);
   const parent = resolveByPath(driveID, parentPath);
   if (!parent) return null;
-  return makeFile(driveID, parent.inodeID, parentPath, name, BackendFileType.Directory);
+  return makeFile(
+    driveID,
+    parent.inodeID,
+    parentPath,
+    name,
+    type,
+    size
+  );
+}
+
+export function mkdirByPath(driveID: string, path: string): MockFile | null {
+  return createInDir(driveID, path, BackendFileType.Directory);
 }
 
 export function touch(driveID: string, path: string): MockFile | null {
   const existing = resolveByPath(driveID, path);
   if (existing) {
-    existing.mtime = ISO();
-    existing.atime = existing.mtime;
+    const now = ISO();
+    existing.mtime = now;
+    existing.atime = now;
     return existing;
   }
-  const lastSlash = path.lastIndexOf("/");
-  const parentPath = lastSlash > 0 ? path.slice(0, lastSlash) : "/";
-  const name = path.slice(lastSlash + 1);
-  const parent = resolveByPath(driveID, parentPath);
-  if (!parent) return null;
-  return makeFile(driveID, parent.inodeID, parentPath, name, BackendFileType.Regular, 0);
+  return createInDir(driveID, path, BackendFileType.Regular, 0);
 }
 
 export function rmRecursive(driveID: string, paths: string[]): string[] {
@@ -240,7 +274,6 @@ export function mv(
       newPath =
         destination === "/" ? `/${file.name}` : `${destination}/${file.name}`;
     } else {
-      // destination is a new path (rename)
       newPath = destination;
     }
 

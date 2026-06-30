@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/api/generated/model";
 import {
-  getAuthMeQueryOptions,
+  getAuthLoginUrl,
   getAuthLogoutMutationOptions,
+  getAuthMeQueryOptions,
   getCreateDriveMutationOptions,
-  getListDrivesQueryOptions,
   getDeleteDriveMutationOptions,
+  getListDrivesQueryOptions,
   getRestoreDriveMutationOptions,
 } from "@/api/generated";
 
@@ -24,17 +25,6 @@ export function useDrives(enabled: boolean) {
     retry: false,
     select: (response) => (response.status === 200 ? response.data : []),
     enabled,
-  });
-}
-
-export function useLogout() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...getAuthLogoutMutationOptions(),
-    onSuccess: () => {
-      queryClient.removeQueries();
-    },
   });
 }
 
@@ -71,8 +61,29 @@ export function useRestoreDrive() {
   });
 }
 
-export function useGoogleLogin() {
-  return () => {
-    window.location.href = "/api/auth/google";
-  };
+/**
+ * Triggers the backend Zitadel login flow. The browser is redirected to
+ * `/api/auth/login`, which Next.js rewrites to the backend in production.
+ * The backend's AuthPassthrough middleware then handles the Zitadel OIDC
+ * choreography and redirects back with the session cookie set.
+ */
+export function login() {
+  window.location.href = getAuthLoginUrl();
+}
+
+/**
+ * Calls the backend `/auth/logout` endpoint, clears the local query cache,
+ * and reloads. The backend removes the `mdrive_session` cookie as part of
+ * the response.
+ */
+export function useLogout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...getAuthLogoutMutationOptions(),
+    onSuccess: () => {
+      queryClient.removeQueries();
+      window.location.reload();
+    },
+  });
 }

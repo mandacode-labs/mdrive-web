@@ -4,7 +4,7 @@ import {
   getDriveByID,
   listChildren,
   listDrives,
-  mkdir,
+  mkdirByPath,
   mv,
   resolveByPath,
   restoreDrive,
@@ -76,9 +76,27 @@ export const handlers = [
     });
   }),
 
+  http.get("/api/auth/login", () => {
+    isAuthenticated = true;
+    return new HttpResponse(null, {
+      status: 302,
+      headers: {
+        Location: "/",
+        "Set-Cookie":
+          "mdrive_session=mock; Path=/; Max-Age=86400; SameSite=Lax",
+      },
+    });
+  }),
+
   http.post("/api/auth/logout", () => {
     isAuthenticated = false;
-    return new HttpResponse(null, { status: 204 });
+    return new HttpResponse(null, {
+      status: 204,
+      headers: {
+        "Set-Cookie":
+          "mdrive_session=; Path=/; Max-Age=0; SameSite=Lax",
+      },
+    });
   }),
 
   http.get("/api/v1/drives", () =>
@@ -164,7 +182,7 @@ export const handlers = [
     return authed(async () => {
       const body = (await request.json()) as { path?: string };
       if (!body?.path) return apiError(400, "bad_request", "path is required");
-      const file = mkdir(params.driveID as string, body.path);
+      const file = mkdirByPath(params.driveID as string, body.path);
       if (!file) return apiError(409, "conflict", "Cannot create directory");
       return HttpResponse.json(toNodeStat(file));
     });
