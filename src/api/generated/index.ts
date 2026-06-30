@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AuthCallbackParams,
   BadRequestResponse,
   CatParams,
   ConflictResponse,
@@ -4184,6 +4185,369 @@ export const useUpsertUser = <TError = BadRequestResponse | UnauthorizedResponse
         TContext
       > => {
       return useMutation(getUpsertUserMutationOptions(options), queryClient);
+    }
+
+export type authLoginResponse302 = {
+  data: void
+  status: 302
+}
+
+export type authLoginResponseDefault = {
+  data: Error
+  status: Exclude<HTTPStatusCodes, 302>
+}
+
+;
+export type authLoginResponseError = (authLoginResponse302 | authLoginResponseDefault) & {
+  headers: Headers;
+};
+
+export type authLoginResponse = (authLoginResponseError)
+
+export const getAuthLoginUrl = () => {
+
+
+
+
+  return `/api/auth/login`
+}
+
+/**
+ * Initiates OIDC login. Handled by zitadel-go's authenticator
+ * mounted at the /auth path prefix in the chart; returns 302 to
+ * the configured issuer (Zitadel/Keycloak/Auth0). The OpenAPI
+ * client cannot follow the redirect — use a browser.
+ * @summary Initiate OIDC login (browser redirect to IdP)
+ */
+export const authLogin = async ( options?: RequestInit): Promise<authLoginResponse> => {
+
+  const res = await fetch(getAuthLoginUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: authLoginResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as authLoginResponse
+}
+
+
+
+
+
+export const getAuthLoginQueryKey = () => {
+    return [
+    `/api/auth/login`
+    ] as const;
+    }
+
+
+export const getAuthLoginQueryOptions = <TData = Awaited<ReturnType<typeof authLogin>>, TError = void | Error>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authLogin>>, TError, TData>>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAuthLoginQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof authLogin>>> = ({ signal }) => authLogin({ signal, ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof authLogin>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AuthLoginQueryResult = NonNullable<Awaited<ReturnType<typeof authLogin>>>
+export type AuthLoginQueryError = void | Error
+
+
+export function useAuthLogin<TData = Awaited<ReturnType<typeof authLogin>>, TError = void | Error>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof authLogin>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof authLogin>>,
+          TError,
+          Awaited<ReturnType<typeof authLogin>>
+        > , 'initialData'
+      >, fetch?: RequestInit}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAuthLogin<TData = Awaited<ReturnType<typeof authLogin>>, TError = void | Error>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authLogin>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof authLogin>>,
+          TError,
+          Awaited<ReturnType<typeof authLogin>>
+        > , 'initialData'
+      >, fetch?: RequestInit}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAuthLogin<TData = Awaited<ReturnType<typeof authLogin>>, TError = void | Error>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authLogin>>, TError, TData>>, fetch?: RequestInit}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Initiate OIDC login (browser redirect to IdP)
+ */
+
+export function useAuthLogin<TData = Awaited<ReturnType<typeof authLogin>>, TError = void | Error>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authLogin>>, TError, TData>>, fetch?: RequestInit}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAuthLoginQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type authCallbackResponse302 = {
+  data: void
+  status: 302
+}
+
+export type authCallbackResponseDefault = {
+  data: Error
+  status: Exclude<HTTPStatusCodes, 302>
+}
+
+;
+export type authCallbackResponseError = (authCallbackResponse302 | authCallbackResponseDefault) & {
+  headers: Headers;
+};
+
+export type authCallbackResponse = (authCallbackResponseError)
+
+export const getAuthCallbackUrl = (params: AuthCallbackParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/auth/callback?${stringifiedParams}` : `/api/auth/callback`
+}
+
+/**
+ * OIDC redirect target. Handled by zitadel-go's authenticator:
+ * exchanges the authorization code for tokens, fetches userinfo,
+ * upserts the user via WithOnAuthenticated, sets the session cookie,
+ * and redirects to the original URL (or /). The OpenAPI client
+ * cannot follow the OIDC dance — use a browser.
+ * @summary OIDC callback from IdP (browser flow)
+ */
+export const authCallback = async (params: AuthCallbackParams, options?: RequestInit): Promise<authCallbackResponse> => {
+
+  const res = await fetch(getAuthCallbackUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: authCallbackResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as authCallbackResponse
+}
+
+
+
+
+
+export const getAuthCallbackQueryKey = (params?: AuthCallbackParams,) => {
+    return [
+    `/api/auth/callback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getAuthCallbackQueryOptions = <TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(params: AuthCallbackParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAuthCallbackQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof authCallback>>> = ({ signal }) => authCallback(params, { signal, ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AuthCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof authCallback>>>
+export type AuthCallbackQueryError = void | Error
+
+
+export function useAuthCallback<TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(
+ params: AuthCallbackParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof authCallback>>,
+          TError,
+          Awaited<ReturnType<typeof authCallback>>
+        > , 'initialData'
+      >, fetch?: RequestInit}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAuthCallback<TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(
+ params: AuthCallbackParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof authCallback>>,
+          TError,
+          Awaited<ReturnType<typeof authCallback>>
+        > , 'initialData'
+      >, fetch?: RequestInit}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAuthCallback<TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(
+ params: AuthCallbackParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>>, fetch?: RequestInit}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary OIDC callback from IdP (browser flow)
+ */
+
+export function useAuthCallback<TData = Awaited<ReturnType<typeof authCallback>>, TError = void | Error>(
+ params: AuthCallbackParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof authCallback>>, TError, TData>>, fetch?: RequestInit}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAuthCallbackQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type authLogoutResponse302 = {
+  data: void
+  status: 302
+}
+
+export type authLogoutResponseDefault = {
+  data: Error
+  status: Exclude<HTTPStatusCodes, 302>
+}
+
+;
+export type authLogoutResponseError = (authLogoutResponse302 | authLogoutResponseDefault) & {
+  headers: Headers;
+};
+
+export type authLogoutResponse = (authLogoutResponseError)
+
+export const getAuthLogoutUrl = () => {
+
+
+
+
+  return `/api/auth/logout`
+}
+
+/**
+ * OIDC RP-initiated logout. Handled by zitadel-go: redirects to
+ * the IdP end_session_endpoint, then clears the session cookie
+ * and redirects to auth.post_logout_url.
+ * @summary Destroy the current session
+ */
+export const authLogout = async ( options?: RequestInit): Promise<authLogoutResponse> => {
+
+  const res = await fetch(getAuthLogoutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: authLogoutResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as authLogoutResponse
+}
+
+
+
+
+export const getAuthLogoutMutationOptions = <TError = void | Error,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError,void, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError,void, TContext> => {
+
+const mutationKey = ['authLogout'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authLogout>>, void> = () => {
+
+
+          return  authLogout(fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AuthLogoutMutationResult = NonNullable<Awaited<ReturnType<typeof authLogout>>>
+
+    export type AuthLogoutMutationError = void | Error
+
+    /**
+ * @summary Destroy the current session
+ */
+export const useAuthLogout = <TError = void | Error,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError,void, TContext>, fetch?: RequestInit}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof authLogout>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAuthLogoutMutationOptions(options), queryClient);
     }
 
 export type authMeResponse200 = {

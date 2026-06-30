@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
+import { getAuthLoginUrl } from "@/api/generated";
 
-// Backend middleware handles the Zitadel login flow. Hitting `/` while
-// unauthenticated triggers a redirect to Zitadel and back.
+// Sends the browser to the backend's OIDC login entry point. The backend's
+// AuthPassthrough middleware then runs the Zitadel choreography and
+// redirects back with the session cookie.
 export default function LoginPage() {
   useEffect(() => {
-    window.location.href = "/";
+    window.location.href = getAuthLoginUrl();
   }, []);
 
   return (

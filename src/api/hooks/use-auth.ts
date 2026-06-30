@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/api/generated/model";
-import { queryClient } from "@/api/client";
 import {
+  getAuthLoginUrl,
+  getAuthLogoutMutationOptions,
   getAuthMeQueryOptions,
   getCreateDriveMutationOptions,
-  getListDrivesQueryOptions,
   getDeleteDriveMutationOptions,
+  getListDrivesQueryOptions,
   getRestoreDriveMutationOptions,
 } from "@/api/generated";
 
@@ -28,53 +29,61 @@ export function useDrives(enabled: boolean) {
 }
 
 export function useCreateDrive() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
 
   return useMutation({
     ...getCreateDriveMutationOptions(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/v1/drives"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
     },
   });
 }
 
 export function useDeleteDrive() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
 
   return useMutation({
     ...getDeleteDriveMutationOptions(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/v1/drives"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
     },
   });
 }
 
 export function useRestoreDrive() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
 
   return useMutation({
     ...getRestoreDriveMutationOptions(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/v1/drives"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/drives"] });
     },
   });
 }
 
 /**
- * Backend middleware drives the Zitadel login flow. We just navigate to a
- * protected route — the middleware will redirect to Zitadel if no session
- * cookie is present, then back to `/` with the cookie set.
+ * Triggers the backend Zitadel login flow. The browser is redirected to
+ * `/api/auth/login`, which Next.js rewrites to the backend in production.
+ * The backend's AuthPassthrough middleware then handles the Zitadel OIDC
+ * choreography and redirects back with the session cookie set.
  */
 export function login() {
-  window.location.href = "/";
+  window.location.href = getAuthLoginUrl();
 }
 
 /**
- * No explicit logout endpoint is exposed in the API. The current fallback
- * clears the local cache and reloads — useful until the backend adds a
- * proper sign-out endpoint.
+ * Calls the backend `/auth/logout` endpoint, clears the local query cache,
+ * and reloads. The backend removes the `mdrive_session` cookie as part of
+ * the response.
  */
-export function logout() {
-  queryClient.removeQueries();
-  window.location.href = "/";
+export function useLogout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...getAuthLogoutMutationOptions(),
+    onSuccess: () => {
+      queryClient.removeQueries();
+      window.location.reload();
+    },
+  });
 }

@@ -76,6 +76,29 @@ export const handlers = [
     });
   }),
 
+  http.get("/api/auth/login", () => {
+    isAuthenticated = true;
+    return new HttpResponse(null, {
+      status: 302,
+      headers: {
+        Location: "/",
+        "Set-Cookie":
+          "mdrive_session=mock; Path=/; Max-Age=86400; SameSite=Lax",
+      },
+    });
+  }),
+
+  http.post("/api/auth/logout", () => {
+    isAuthenticated = false;
+    return new HttpResponse(null, {
+      status: 204,
+      headers: {
+        "Set-Cookie":
+          "mdrive_session=; Path=/; Max-Age=0; SameSite=Lax",
+      },
+    });
+  }),
+
   http.get("/api/v1/drives", () =>
     authed(() => HttpResponse.json(listDrives()))
   ),
