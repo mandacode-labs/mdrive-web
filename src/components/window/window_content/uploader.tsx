@@ -18,6 +18,8 @@ export default function Uploader({ targetPath }: UploaderProps) {
   const {
     tasks,
     addFiles,
+    startUpload,
+    startAllUploads,
     cancelUpload,
     retryUpload,
     removeTask,
@@ -66,6 +68,7 @@ export default function Uploader({ targetPath }: UploaderProps) {
   const failedCount = tasks.filter(
     (t) => t.status === "failed" || t.status === "skipped"
   ).length;
+  const queuedCount = tasks.filter((t) => t.status === "queued").length;
 
   return (
     <div className={styles.container}>
@@ -132,6 +135,15 @@ export default function Uploader({ targetPath }: UploaderProps) {
                   {statusText(task.status)}
                 </div>
                 <div className={styles.taskActions}>
+                  {task.status === "queued" && (
+                    <button
+                      type="button"
+                      className={styles.actionButton}
+                      onClick={() => startUpload(task.id)}
+                    >
+                      Upload
+                    </button>
+                  )}
                   {task.status === "uploading" && (
                     <button
                       type="button"
@@ -174,16 +186,28 @@ export default function Uploader({ targetPath }: UploaderProps) {
           <span className={styles.footerText}>
             {completedCount} / {tasks.length} completed
             {failedCount > 0 ? `, ${failedCount} failed` : ""}
+            {queuedCount > 0 ? `, ${queuedCount} queued` : ""}
           </span>
-          {completedCount > 0 && (
-            <button
-              type="button"
-              className={styles.actionButton}
-              onClick={clearCompleted}
-            >
-              Clear completed
-            </button>
-          )}
+          <div className={styles.footerActions}>
+            {queuedCount > 0 && (
+              <button
+                type="button"
+                className={styles.actionButton}
+                onClick={startAllUploads}
+              >
+                Upload all
+              </button>
+            )}
+            {completedCount > 0 && (
+              <button
+                type="button"
+                className={styles.actionButton}
+                onClick={clearCompleted}
+              >
+                Clear completed
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -192,6 +216,8 @@ export default function Uploader({ targetPath }: UploaderProps) {
 
 function statusText(status: string): string {
   switch (status) {
+    case "queued":
+      return "Queued";
     case "pending":
       return "Pending";
     case "uploading":

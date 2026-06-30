@@ -4,7 +4,7 @@ import {
   getDriveByID,
   listChildren,
   listDrives,
-  mkdir,
+  mkdirByPath,
   mv,
   resolveByPath,
   restoreDrive,
@@ -182,7 +182,7 @@ export const handlers = [
     return authed(async () => {
       const body = (await request.json()) as { path?: string };
       if (!body?.path) return apiError(400, "bad_request", "path is required");
-      const file = mkdir(params.driveID as string, body.path);
+      const file = mkdirByPath(params.driveID as string, body.path);
       if (!file) return apiError(409, "conflict", "Cannot create directory");
       return HttpResponse.json(toNodeStat(file));
     });
