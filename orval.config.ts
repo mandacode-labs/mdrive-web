@@ -1,6 +1,6 @@
 import { defineConfig } from "orval";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+const API_BASE = "https://api.mdrive.mandacode.com";
 
 export default defineConfig({
   api: {

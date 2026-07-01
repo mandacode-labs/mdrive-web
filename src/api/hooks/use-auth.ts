@@ -9,13 +9,8 @@ import {
   getRestoreDriveMutationOptions,
 } from "@/api/generated";
 
-// Auth flow hits the API origin directly so Set-Cookie's Domain matches
-// the response origin. NEXT_PUBLIC_API_BASE is the API origin
-// (e.g. https://api.mdrive.mandacode.com); in dev it's empty so the
-// relative path goes to MSW.
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
-const authUrl = (path: string) =>
-  API_BASE ? `${API_BASE}${path}` : path;
+const API_BASE = "https://api.mdrive.mandacode.com";
+const authUrl = (path: string) => `${API_BASE}${path}`;
 
 export function useMe() {
   return useQuery({

@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+const API_BASE = "https://api.mdrive.mandacode.com";
 
 export default function LoginPage() {
   useEffect(() => {
-    const url = new URL(API_BASE ? `${API_BASE}/auth/login` : "/auth/login");
+    const url = new URL(`${API_BASE}/auth/login`);
     url.searchParams.set(
       "redirect_uri",
       new URL("/", window.location.origin).toString()
@@ -20,4 +20,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
