@@ -1,8 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  env: {
-    NEXT_PUBLIC_API_BASE: "https://api.mdrive.mandacode.com",
+  async rewrites() {
+    if (process.env.NODE_ENV === "development") {
+      return [];
+    }
+    return [];
   },
 };
 
