@@ -4,6 +4,7 @@ import type { User } from "@/api/generated/model";
 import {
   getAuthMeQueryOptions,
   getCreateDriveMutationOptions,
+  getListDrivesQueryKey,
   getListDrivesQueryOptions,
   getDeleteDriveMutationOptions,
   getRestoreDriveMutationOptions,
@@ -35,7 +36,7 @@ export function useCreateDrive() {
   return useMutation({
     ...getCreateDriveMutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/v1/drives"] });
+      queryClient.invalidateQueries({ queryKey: getListDrivesQueryKey() });
     },
   });
 }
@@ -45,7 +46,7 @@ export function useDeleteDrive() {
   return useMutation({
     ...getDeleteDriveMutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/v1/drives"] });
+      queryClient.invalidateQueries({ queryKey: getListDrivesQueryKey() });
     },
   });
 }
@@ -55,7 +56,7 @@ export function useRestoreDrive() {
   return useMutation({
     ...getRestoreDriveMutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/v1/drives"] });
+      queryClient.invalidateQueries({ queryKey: getListDrivesQueryKey() });
     },
   });
 }
